@@ -157,7 +157,19 @@ export default function PaywallScreen() {
     ).current;
 
     const handleContinue = () => {
-        const email = userEmail || 'guest@vilo.app';
+        if (!userEmail) {
+            Alert.alert(
+                'Conta Necessária',
+                'Para assinar o Vilo Pro e garantir que o acesso não seja perdido, por favor crie uma conta ou faça login primeiro.',
+                [
+                    { text: 'Agora não', style: 'cancel' },
+                    { text: 'Fazer Login', onPress: () => router.push('/login') }
+                ]
+            );
+            return;
+        }
+
+        const email = userEmail;
         createCheckout(
             {
                 planId: selectedPlan,

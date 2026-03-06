@@ -26,7 +26,7 @@ export function RecordControls({
                 <Text className="text-white font-inter text-xs w-16">Aa</Text>
                 <Slider
                     style={{ flex: 1, height: 40 }}
-                    minimumValue={24}
+                    minimumValue={16}
                     maximumValue={72}
                     value={fontSize}
                     onValueChange={setFontSize}

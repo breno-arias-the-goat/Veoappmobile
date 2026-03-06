@@ -94,6 +94,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="subtitles"
+        options={{
+          href: null, // Removed from bottom bar
+        }}
+      />
     </Tabs>
   );
 }

@@ -17,7 +17,7 @@ export default function RecordScreen() {
         "Preparando o seu estúdio e o roteiro..."
     );
     const [speed, setSpeed] = useState(70);
-    const [fontSize, setFontSize] = useState(36);
+    const [fontSize, setFontSize] = useState(24);
     const [isScrolling, setIsScrolling] = useState(false);
     const [countdown, setCountdown] = useState<number | null>(null);
 

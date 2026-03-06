@@ -16,8 +16,16 @@ export const fetchFolders = async (): Promise<Folder[]> => {
 };
 
 export const createFolder = async (payload: { name: string; emoji?: string; color?: string }) => {
-    const { data } = await api.post('/folders', payload);
-    return data?.data as Folder;
+    console.log('folderService.createFolder called with:', payload);
+    try {
+        console.log(`Sending POST request to /folders`);
+        const response = await api.post('/folders', payload);
+        console.log('folderService.createFolder response:', response.data);
+        return response.data?.data as Folder;
+    } catch (error: any) {
+        console.error('folderService.createFolder error inside axios:', error?.message);
+        throw error;
+    }
 };
 
 export const updateFolder = async (folderId: string, payload: { name?: string; emoji?: string; color?: string }) => {

@@ -13,6 +13,8 @@ import {
     RefreshControl,
     KeyboardAvoidingView,
     Platform,
+    Keyboard,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FolderCard } from '../../components/FolderCard';
@@ -28,16 +30,19 @@ export default function FoldersScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
     const [folderName, setFolderName] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
 
     const openCreate = () => {
         setEditingFolder(null);
         setFolderName('');
+        setErrorMsg('');
         setModalVisible(true);
     };
 
     const openEdit = (folder: Folder) => {
         setEditingFolder(folder);
         setFolderName(folder.name);
+        setErrorMsg('');
         setModalVisible(true);
     };
 
@@ -45,21 +50,47 @@ export default function FoldersScreen() {
         setModalVisible(false);
         setEditingFolder(null);
         setFolderName('');
+        setErrorMsg('');
     };
 
-    const handleSave = () => {
-        const name = folderName.trim();
-        if (!name) {
-            Alert.alert('Nome obrigatório', 'Digite um nome para a pasta.');
-            return;
-        }
-        if (editingFolder) {
-            updateFolder.mutate(
-                { folderId: editingFolder.id, name },
-                { onSuccess: closeModal }
-            );
-        } else {
-            createFolder.mutate({ name }, { onSuccess: closeModal });
+    const handleSave = async () => {
+        try {
+            // Se isBusy estiver preso, podemos forçar a continuação para debug
+            // if (isBusy) {
+            //    return;
+            // }
+
+            const name = folderName.trim();
+            if (!name) {
+                setErrorMsg('Digite um nome para a pasta.');
+                return;
+            }
+
+            console.log('--- START handleSave ---', name);
+
+            if (editingFolder) {
+                console.log('Update folder mutation called');
+                await updateFolder.mutateAsync({
+                    folderId: editingFolder.id,
+                    name,
+                    emoji: editingFolder.emoji || '📁',
+                    color: editingFolder.color || '#3B6FE8'
+                });
+            } else {
+                console.log('Create folder mutation called', { name });
+                await createFolder.mutateAsync({
+                    name,
+                    emoji: '📁',
+                    color: '#3B6FE8'
+                });
+            }
+            console.log('Mutation finished successfully, closing modal');
+            closeModal();
+        } catch (error: any) {
+            console.error('Save folder error caught in try/catch:', error);
+            const msg = error?.response?.data?.message || error?.message || 'Falha ao processar';
+            Alert.alert('Erro Crítico', 'A tentativa falhou! Motivo: ' + msg);
+            setErrorMsg('ERRO: ' + msg);
         }
     };
 
@@ -130,44 +161,60 @@ export default function FoldersScreen() {
                     style={{ flex: 1 }}
                 >
                     <Pressable style={styles.backdrop} onPress={closeModal}>
-                        <Pressable onPress={() => { }} style={{ width: '100%' }}>
-                            <View style={styles.sheet}>
-                                {/* Drag handle */}
-                                <View style={styles.handle} />
+                        <ScrollView
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+                            showsVerticalScrollIndicator={false}
+                            style={{ width: '100%' }}
+                        >
+                            <Pressable style={{ width: '100%' }}>
+                                <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+                                    {/* Drag handle */}
+                                    <View style={styles.handle} />
 
-                                {/* Title */}
-                                <Text style={styles.sheetTitle}>
-                                    {editingFolder ? 'Renomear pasta' : 'Nome da pasta'}
-                                </Text>
+                                    {/* Title */}
+                                    <Text style={styles.sheetTitle}>
+                                        {editingFolder ? 'Renomear pasta' : 'Nome da pasta'}
+                                    </Text>
 
-                                {/* Input — underline style like competitor */}
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nome da pasta"
-                                    placeholderTextColor="#555"
-                                    value={folderName}
-                                    onChangeText={setFolderName}
-                                    autoFocus
-                                    returnKeyType="done"
-                                    onSubmitEditing={handleSave}
-                                    maxLength={60}
-                                    selectionColor="#3B6FE8"
-                                />
+                                    {/* Input — underline style like competitor */}
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Nome da pasta"
+                                        placeholderTextColor="#555"
+                                        value={folderName}
+                                        onChangeText={(t) => {
+                                            setFolderName(t);
+                                            if (errorMsg) setErrorMsg('');
+                                        }}
+                                        autoFocus
+                                        returnKeyType="done"
+                                        onSubmitEditing={handleSave}
+                                        maxLength={60}
+                                        selectionColor="#3B6FE8"
+                                    />
 
-                                {/* Salvar — full width, always visible above keyboard */}
-                                <TouchableOpacity
-                                    style={[styles.saveBtn, isBusy && styles.saveBtnDisabled]}
-                                    onPress={handleSave}
-                                    activeOpacity={0.85}
-                                    disabled={isBusy}
-                                >
-                                    {isBusy
-                                        ? <ActivityIndicator color="#fff" />
-                                        : <Text style={styles.saveBtnText}>Salvar</Text>
-                                    }
-                                </TouchableOpacity>
-                            </View>
-                        </Pressable>
+                                    {errorMsg ? (
+                                        <View style={{ backgroundColor: '#ffcccc', padding: 10, borderRadius: 8, marginBottom: 16 }}>
+                                            <Text style={[styles.errorText, { color: '#ff0000', fontWeight: 'bold', fontSize: 16, marginBottom: 0 }]}>{errorMsg}</Text>
+                                        </View>
+                                    ) : null}
+
+                                    {/* Salvar — full width, always visible above keyboard */}
+                                    <TouchableOpacity
+                                        style={[styles.saveBtn, isBusy && styles.saveBtnDisabled]}
+                                        onPress={handleSave}
+                                        activeOpacity={0.85}
+                                        disabled={isBusy}
+                                    >
+                                        {isBusy
+                                            ? <ActivityIndicator color="#fff" />
+                                            : <Text style={styles.saveBtnText}>Salvar</Text>
+                                        }
+                                    </TouchableOpacity>
+                                </View>
+                            </Pressable>
+                        </ScrollView>
                     </Pressable>
                 </KeyboardAvoidingView>
             </Modal>
@@ -276,7 +323,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 2,
         borderBottomWidth: 1.5,
         borderBottomColor: '#3B6FE8',
-        marginBottom: 28,
+        marginBottom: 16,
+    },
+    errorText: {
+        color: '#FF453A',
+        fontSize: 14,
+        marginBottom: 16,
+        paddingHorizontal: 2,
     },
 
     // Salvar button — full width blue (competitor style)

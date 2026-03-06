@@ -8,7 +8,7 @@ export function setApiToken(token: string | null) {
 }
 
 const getBaseUrl = () => {
-    return process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend-fxzr.onrender.com/api';
+    return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 };
 
 const api = axios.create({

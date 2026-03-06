@@ -79,6 +79,49 @@ export default function EditScriptScreen() {
         }
     };
 
+    const handleSaveAndRecord = async () => {
+        if (!title.trim() || !content.trim()) {
+            Alert.alert('Atenção', 'Título e conteúdo são obrigatórios.');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            let finalScriptId = scriptId;
+            if (isEditing) {
+                await updateScript(scriptId, { title, content });
+                showToast('Script salvo!', 'success');
+            } else {
+                const newScript = await createManualScript({ title, content });
+                finalScriptId = newScript.id;
+                showToast('Script criado!', 'success');
+            }
+            queryClient.invalidateQueries({ queryKey: ['scripts'] });
+
+            // Go to record screen
+            if (finalScriptId) {
+                router.replace({
+                    pathname: '/(tabs)/record',
+                    params: { scriptId: finalScriptId }
+                });
+            } else {
+                router.push('/(tabs)/scripts');
+            }
+        } catch (error: any) {
+            const status = error?.response?.status;
+            const msg = error?.response?.data?.message;
+            if (status === 503) {
+                showToast('Serviço temporariamente indisponível. Tente novamente em instantes.', 'warning');
+            } else if (status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+            } else {
+                showToast(msg || 'Erro ao salvar o script. Tente novamente.', 'error');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     if (isFetching) {
         return (
             <View className="flex-1 justify-center items-center bg-background">
@@ -96,7 +139,7 @@ export default function EditScriptScreen() {
                 <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }}>
                     <View className="mb-6 flex-row items-center justify-between">
                         <Text className="text-3xl font-inter-bold text-white tracking-tight">
-                            {isEditing ? 'Editar Script' : 'Novo Script Manual'}
+                            {isEditing ? 'Revisar Roteiro' : 'Novo Roteiro'}
                         </Text>
                     </View>
 
@@ -125,15 +168,23 @@ export default function EditScriptScreen() {
                     </View>
 
                     <Button
-                        title={isEditing ? 'Salvar Alterações' : 'Criar Script'}
-                        onPress={handleSave}
+                        title="Salvar e Gravar Agora 🎬"
+                        onPress={handleSaveAndRecord}
                         loading={isLoading}
                     />
                     <View className="mt-4">
                         <Button
+                            title="Apenas Salvar"
+                            variant="secondary"
+                            onPress={handleSave}
+                            disabled={isLoading}
+                        />
+                    </View>
+                    <View className="mt-4">
+                        <Button
                             title="Cancelar"
                             variant="secondary"
-                            onPress={() => router.back()}
+                            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/scripts')}
                             disabled={isLoading}
                         />
                     </View>

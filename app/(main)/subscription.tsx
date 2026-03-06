@@ -22,10 +22,18 @@ export default function SubscriptionScreen() {
             return;
         }
 
+        if (!userEmail) {
+            Alert.alert(
+                'Conta Necessária',
+                'Faça login ou crie uma conta para assinar o Vilo Pro e não perder seu acesso.',
+            );
+            return;
+        }
+
         setSelectedPlanId(planId);
 
         // ✅ Usa o email real do usuário logado (AuthContext)
-        const email = userEmail || 'guest@vilo.app';
+        const email = userEmail;
 
         createCheckout(
             { planId, email },

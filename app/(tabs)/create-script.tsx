@@ -89,11 +89,11 @@ export default function CreateScriptScreen() {
             queryClient.invalidateQueries({ queryKey: ['scripts'] });
             showToast('Script gerado e salvo! ✍️', 'success');
 
-            // Navigate directly to record screen with the new script
+            // Navigate directly to edit screen with the new script
             if (script?.id) {
                 router.replace({
-                    pathname: '/(tabs)/record',
-                    params: { scriptId: script.id }
+                    pathname: '/(tabs)/edit-script',
+                    params: { scriptId: script.id, isFromAi: 'true' }
                 });
             } else {
                 router.replace('/(tabs)/scripts');
@@ -197,7 +197,7 @@ export default function CreateScriptScreen() {
         <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A2E' }}>
-                <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16, padding: 8 }}>
+                <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/scripts')} style={{ marginRight: 16, padding: 8 }}>
                     <Text style={{ color: '#5E2BFF', fontSize: 15, fontWeight: 'bold' }}>← Voltar</Text>
                 </TouchableOpacity>
                 <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', flex: 1 }}>✨ Criar Script com IA</Text>
@@ -268,7 +268,7 @@ export default function CreateScriptScreen() {
                         disabled={loading}
                     />
                     <Text style={{ color: '#666', fontSize: 12, textAlign: 'center', marginTop: 12 }}>
-                        Após gerar, você irá direto para a tela de gravação 🎬
+                        Após gerar, você poderá revisar e editar o roteiro 📝
                     </Text>
                 </View>
             </ScrollView>

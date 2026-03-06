@@ -28,9 +28,13 @@ export const useCreateFolder = () => {
     return useMutation({
         mutationFn: (payload: { name: string; emoji?: string; color?: string }) =>
             createFolder(payload),
-        onSuccess: () => qc.invalidateQueries({ queryKey: FOLDERS_KEY }),
+        onSuccess: () => {
+            console.log('useCreateFolder: onSuccess');
+            Alert.alert('Sucesso', 'Pasta criada com sucesso!');
+            qc.invalidateQueries({ queryKey: FOLDERS_KEY });
+        },
         onError: (err: any) => {
-            console.error('Error creating folder:', err);
+            console.error('useCreateFolder: onError', err);
             Alert.alert('Erro', err?.response?.data?.message || 'Não foi possível criar a pasta.');
         },
     });

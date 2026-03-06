@@ -5,6 +5,7 @@ import { completeUpload, getPresignedUrl } from '../services/uploadService';
 interface UploadParams {
     fileUri: string;
     scriptId?: string;
+    title?: string; // NOVO: Título customizado do vídeo
     onProgress?: (progress: number) => void;
 }
 
@@ -12,13 +13,16 @@ export const useVideoUpload = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ fileUri, scriptId, onProgress }: UploadParams) => {
+        mutationFn: async ({ fileUri, scriptId, title, onProgress }: UploadParams) => {
             try {
                 // 1. Fetch the local file as blob
                 const response = await fetch(fileUri);
                 const blob = await response.blob();
                 const fileSize = blob.size;
-                const fileName = `video_${Date.now()}.mp4`;
+
+                // Se um título foi providenciado, usa ela como fileName, assegurando extensão .mp4
+                const cleanTitle = title ? title.replace(/[^a-zA-Z0-9.\-_ ()]/g, '') : `Video_${Date.now()}`;
+                const fileName = cleanTitle.toLowerCase().endsWith('.mp4') ? cleanTitle : `${cleanTitle}.mp4`;
                 const contentType = 'video/mp4';
 
                 onProgress?.(5);

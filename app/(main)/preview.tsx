@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { Alert, Platform, View, TextInput, Text } from 'react-native';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -27,6 +27,7 @@ export default function PreviewScreen() {
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [videoTitle, setVideoTitle] = useState('Meu Projeto'); // Variavel Novo
 
     const handleRangeChange = (start: number, end: number) => {
         setStartTime(start);
@@ -105,36 +106,75 @@ export default function PreviewScreen() {
             setUploadProgress(0);
 
             let finalVideoUri = videoUri;
-
-            // O módulo de corte (react-native-video-processing) foi removido na Web devido a falhas do Metro Bundler.
-            // Para resolver esse bug na versão Web, ignoramos o corte e enviamos o vídeo original.
-            // O corte pode ser feito no lado do backend ou com FFmpeg WASM num PR futuro.
             console.log("Corte de vídeo temporariamente desativado. Enviando vídeo original.");
 
-            // 2. Upload the (trimmed) video
+            // Upload video with custom title
             await uploadVideoMutation.mutateAsync({
                 fileUri: finalVideoUri,
+                title: videoTitle.trim() || 'Meu Projeto',
+                scriptId: typeof scriptId === 'string' ? scriptId : undefined,
+                onProgress: (prog) => setUploadProgress(prog)
+            });
+
+            setIsProcessing(false);
+            Alert.alert("Sucesso!", "Seu vídeo foi enviado para a nuvem com sucesso!");
+            router.replace('/(tabs)');
+
+        } catch (error: any) {
+            console.error("Failed to upload: ", error);
+            setIsProcessing(false);
+            Alert.alert("Erro", "Ocorreu um erro ao salvar seu vídeo. " + (error.message || ''));
+        }
+    };
+
+    const handleInstantSubtitles = async () => {
+        if (!videoUri || typeof videoUri !== 'string') return;
+
+        try {
+            setIsProcessing(true);
+            setUploadProgress(0);
+
+            let finalVideoUri = videoUri;
+            console.log("Starting instant subtitle flow. Uploading original video.");
+
+            // Upload video first with custom title
+            const uploadResult = await uploadVideoMutation.mutateAsync({
+                fileUri: finalVideoUri,
+                title: videoTitle.trim() || 'Meu Projeto',
                 scriptId: typeof scriptId === 'string' ? scriptId : undefined,
                 onProgress: (prog) => setUploadProgress(prog)
             });
 
             setIsProcessing(false);
 
-            // 3. Success! Go to home.
-            Alert.alert("Sucesso!", "Seu vídeo foi cortado e enviado com sucesso!");
-            router.replace('/(tabs)');
+            const uploadedVideoId = uploadResult?.videoId;
+            const uploadedVideoUrl = uploadResult?.videoUrl || finalVideoUri;
+
+            if (uploadedVideoId) {
+                // Instantly navigate to caption editor
+                router.replace({
+                    pathname: '/(main)/caption-editor',
+                    params: {
+                        videoUri: uploadedVideoUrl,
+                        videoId: uploadedVideoId,
+                        isCloudVideo: 'true'
+                    }
+                });
+            } else {
+                Alert.alert("Erro", "Vídeo enviado, mas não foi possível obter o ID para legendar.");
+            }
 
         } catch (error: any) {
-            console.error("Failed to process or upload: ", error);
+            console.error("Failed to upload for subtitles: ", error);
             setIsProcessing(false);
-            Alert.alert("Erro", "Ocorreu um erro ao cortar ou salvar seu vídeo. " + (error.message || ''));
+            Alert.alert("Erro", "Ocorreu um erro ao preparar o vídeo para legendas. " + (error.message || ''));
         }
     };
 
     if (!videoUri || typeof videoUri !== 'string') {
         return (
             <View className="flex-1 justify-center items-center bg-background-light dark:bg-background-dark p-lg">
-                <Button title="Voltar" onPress={() => router.back()} />
+                <Button title="Voltar" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} />
             </View>
         );
     }
@@ -166,11 +206,27 @@ export default function PreviewScreen() {
             </ScrollView>
 
             {/* Action Buttons (Pinned Footer) */}
-            <View className="p-4 border-t border-border bg-background-light dark:bg-background-dark gap-3">
+            <View className="px-5 py-6 border-t border-border bg-background-light dark:bg-background-dark gap-4">
+
+                {/* Rename Input */}
+                {isCloudVideo !== 'true' && (
+                    <View className="mb-2">
+                        <Text className="text-white text-xs font-inter-medium mb-2 opacity-80 pl-1">Nome do Projeto</Text>
+                        <TextInput
+                            value={videoTitle}
+                            onChangeText={setVideoTitle}
+                            placeholder="Ex: Marketing Digital 01"
+                            placeholderTextColor="#666"
+                            className="bg-[#1C1C1E] text-white px-4 py-3 rounded-xl border border-white/10 font-inter text-base"
+                            maxLength={40}
+                        />
+                    </View>
+                )}
+
                 {isCloudVideo !== 'true' && (
                     <Button
-                        title="☁️ Salvar na Nuvem"
-                        onPress={handleSave}
+                        title="✨ Gerar Legendas (Instantâneo)"
+                        onPress={handleInstantSubtitles}
                         className="w-full"
                         variant="primary"
                         disabled={isProcessing}
@@ -179,7 +235,7 @@ export default function PreviewScreen() {
 
                 {isCloudVideo === 'true' && videoId && (
                     <Button
-                        title="✨ Legendas Mágicas (IA)"
+                        title="✨ Editar Legendas Inteligentes"
                         onPress={() => router.push({
                             pathname: '/(main)/caption-editor',
                             params: { videoUri, videoId }
@@ -190,33 +246,65 @@ export default function PreviewScreen() {
                     />
                 )}
 
-                <View className="flex-row gap-3 w-full">
-                    <View className="flex-1">
-                        <Button
-                            title="⬇️ Baixar"
-                            variant={isCloudVideo === 'true' ? "primary" : "secondary"}
-                            onPress={handleDownload}
-                            disabled={isProcessing}
-                        />
-                    </View>
-                    <View className="flex-1">
-                        <Button
-                            title="🔗 Compartilhar"
-                            variant="secondary"
-                            onPress={handleShare}
-                            disabled={isProcessing}
-                        />
-                    </View>
-                </View>
+                {isCloudVideo !== 'true' ? (
+                    <View className="gap-4">
+                        <View className="flex-row gap-4 w-full">
+                            <View className="flex-1">
+                                <Button
+                                    title="☁️ Salvar Nuvem"
+                                    onPress={handleSave}
+                                    variant="secondary"
+                                    disabled={isProcessing}
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Button
+                                    title="⬇️ Baixar Local"
+                                    variant="secondary"
+                                    onPress={handleDownload}
+                                    disabled={isProcessing}
+                                />
+                            </View>
+                        </View>
 
-                {isCloudVideo !== 'true' && (
-                    <Button
-                        title="🗑️ Descartar"
-                        variant="ghost"
-                        onPress={() => router.back()}
-                        className="w-full"
-                        disabled={isProcessing}
-                    />
+                        <View className="flex-row gap-4 w-full">
+                            <View className="flex-1">
+                                <Button
+                                    title="🔗 Compartilhar"
+                                    variant="secondary"
+                                    onPress={handleShare}
+                                    disabled={isProcessing}
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Button
+                                    title="🗑️ Descartar"
+                                    variant="ghost"
+                                    onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+                                    disabled={isProcessing}
+                                />
+                            </View>
+                        </View>
+                    </View>
+                ) : (
+                    <View className="flex-row gap-4 w-full">
+                        <View className="flex-1">
+                            <Button
+                                title="⬇️ Baixar Local"
+                                variant="secondary"
+                                onPress={handleDownload}
+                                disabled={isProcessing}
+                            />
+                        </View>
+                        <View className="flex-1">
+                            <Button
+                                title="🔗 Compartilhar"
+                                variant="secondary"
+                                onPress={handleShare}
+                                disabled={isProcessing}
+                            />
+                        </View>
+                    </View>
                 )}
             </View>
 
