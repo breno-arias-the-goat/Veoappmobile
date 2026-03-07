@@ -12,10 +12,6 @@ assetExts.forEach((ext) => {
     }
 });
 
-// Mock react-native-video-processing for web to prevent Metro bundler crashes
-config.resolver.extraNodeModules = {
-    ...config.resolver.extraNodeModules,
-    'react-native-video-processing': require.resolve('./__mocks__/react-native-video-processing.js'),
-};
+// Limpo
 
 module.exports = config;

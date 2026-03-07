@@ -9,16 +9,15 @@
     "web": "cross-env EXPO_WEB_DEBUG=true npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css && expo start --web",
     "build": "cross-env NODE_ENV=production npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css && cross-env NODE_ENV=production expo export -p web -c && echo !assets/node_modules/** > dist/.vercelignore && echo !assets/node_modules >> dist/.vercelignore"
   },
-  "browser": {
-    "react-native-video-processing": false
-  },
+  "browser": {},
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.1.1",
     "@hookform/resolvers": "^5.2.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.0.1",
-    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native": "^7.1.33",
     "@stripe/stripe-react-native": "0.50.3",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",
@@ -43,6 +42,7 @@
     "expo-video": "~3.0.16",
     "expo-video-thumbnails": "~10.0.8",
     "expo-web-browser": "~15.0.10",
+    "firebase": "^12.10.0",
     "framer-motion": "^12.34.4",
     "i18next": "^25.8.14",
     "nativewind": "^2.0.11",
@@ -55,7 +55,6 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-video-processing": "^1.7.2",
     "react-native-vision-camera": "^4.7.3",
     "react-native-web": "^0.21.0",
     "react-native-webview": "13.15.0",

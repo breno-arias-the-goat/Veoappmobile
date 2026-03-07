@@ -3,15 +3,7 @@ module.exports = function (api) {
     return {
         presets: ['babel-preset-expo'],
         plugins: [
-            'nativewind/babel',
-            [
-                'module-resolver',
-                {
-                    alias: {
-                        'react-native-video-processing': './mocks/react-native-video-processing.web.js'
-                    }
-                }
-            ]
+            'nativewind/babel'
         ]
     };
 };
