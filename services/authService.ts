@@ -1,8 +1,48 @@
 import api from '../lib/api';
+import { auth } from '../lib/firebase';
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    updateProfile as updateFirebaseAuthProfile
+} from 'firebase/auth';
 
 export const loginUser = async (credentials: any) => {
-    const response = await api.post('/auth/login', credentials);
-    return response.data;
+    // 1. Firebase Auth Primary Login com TIMEOUT de 15s
+    let userCredential;
+    try {
+        userCredential = await Promise.race([
+            signInWithEmailAndPassword(
+                auth,
+                credentials.email,
+                credentials.password
+            ),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_firebase')), 15000)
+            )
+        ]);
+    } catch (error: any) {
+        if (error.message === 'timeout_firebase') {
+            throw new Error('Tempo de conexão esgotado. Verifique sua internet.');
+        }
+        throw error;
+    }
+
+    // 2. Comunicar com o backend para gerar sessão com TIMEOUT de 15s
+    const idToken = await userCredential.user.getIdToken();
+    try {
+        const response = await Promise.race([
+            api.post('/auth/login', { idToken }),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_api')), 15000)
+            )
+        ]);
+        return response.data;
+    } catch (error: any) {
+        if (error.message === 'timeout_api') {
+            throw new Error('Servidor demorou demais para responder. Tente novamente.');
+        }
+        throw new Error(error.response?.data?.message || 'Falha ao conectar com o servidor.');
+    }
 };
 
 export const signupUser = async (userData: any) => {
@@ -10,15 +50,59 @@ export const signupUser = async (userData: any) => {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Doe';
 
+    let userCredential;
+    try {
+        // 1. O Firebase é a única ferramenta de criação de contas com TIMEOUT de 15s
+        userCredential = await Promise.race([
+            createUserWithEmailAndPassword(
+                auth,
+                userData.email,
+                userData.password
+            ),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_firebase')), 15000)
+            )
+        ]);
+    } catch (error: any) {
+        if (error.message === 'timeout_firebase') {
+            throw new Error("Tempo de conexão esgotado. Verifique sua internet.");
+        }
+        if (error.code === 'auth/configuration-not-found') {
+            throw new Error("Erro Crítico: A Autenticação por E-mail/Senha está desativada no seu projeto Firebase Console. Por favor, ative-a na aba Authentication -> Sign-in method.");
+        }
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error("Este e-mail já está em uso no Firebase. Tente fazer login.");
+        }
+        throw error;
+    }
+
+    // Salvar o display name no Firebase Auth
+    await updateFirebaseAuthProfile(userCredential.user, {
+        displayName: `${firstName} ${lastName}`.trim()
+    });
+
+    // 2. Informar o backend para criar o perfil local no DB também usando o ID Token com TIMEOUT de 15s
+    const idToken = await userCredential.user.getIdToken();
     const payload = {
-        email: userData.email,
-        password: userData.password,
+        idToken,
         firstName,
         lastName
     };
 
-    const response = await api.post('/auth/signup', payload);
-    return response.data;
+    try {
+        const response = await Promise.race([
+            api.post('/auth/signup', payload),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_api')), 15000)
+            )
+        ]);
+        return response.data;
+    } catch (error: any) {
+        if (error.message === 'timeout_api') {
+            throw new Error('Servidor demorou demais para responder. O registro não pôde ser completado.');
+        }
+        throw new Error(error.response?.data?.message || 'Falha ao conectar com o servidor para registro.');
+    }
 };
 
 export const getMe = async () => {
