@@ -41,30 +41,52 @@ export default function CaptionEditorScreen() {
             setProgress(0);
             const { jobId } = await generateMutation.mutateAsync({ language: 'pt-BR' });
 
+            let pollCount = 0;
+            const MAX_POLLS = 300; // 300 * 3 segundos = 15 minutos máximo
+            const POLL_INTERVAL = 3000; // 3 segundos
+
             const poll = setInterval(async () => {
+                pollCount++;
+
+                // TIMEOUT: Se passar de 15 minutos, desiste
+                if (pollCount > MAX_POLLS) {
+                    clearInterval(poll);
+                    setIsGenerating(false);
+                    Alert.alert(
+                        "Timeout",
+                        "A geração de legendas excedeu o tempo limite (15 minutos). Tente novamente com um vídeo menor."
+                    );
+                    return;
+                }
+
                 try {
                     const statusData = await checkJobStatus(jobId);
                     if (statusData) {
                         setProgress(statusData.progress || 0);
+
                         if (statusData.status === 'completed') {
                             clearInterval(poll);
                             setIsGenerating(false);
                             subtitlesQuery.refetch();
+                            Alert.alert("Sucesso", "Legendas geradas com sucesso!");
                         } else if (statusData.status === 'failed') {
                             clearInterval(poll);
                             setIsGenerating(false);
-                            Alert.alert("Aviso Exclusivo Jarvis", `Falha detectada na transcrição I.A. Motivo interno: ${statusData.errorMessage || 'Falha de compilação FFmpeg ou timeout de API'}`);
+                            Alert.alert(
+                                "Erro na Geração",
+                                statusData.errorMessage || 'Falha ao gerar legendas. Tente novamente.'
+                            );
                         }
                     }
                 } catch (e: any) {
-                    clearInterval(poll);
-                    setIsGenerating(false);
-                    Alert.alert("Erro", "Falha de comunicação com o servidor.");
+                    console.error('Erro ao verificar status:', e.message);
+                    // Continua tentando, não desiste na primeira falha
                 }
-            }, 3000);
+            }, POLL_INTERVAL);
+
         } catch (error: any) {
             setIsGenerating(false);
-            Alert.alert("Erro", "O servidor recusou a requisição de geração. Verifique os logs Node.js.");
+            Alert.alert("Erro", error.message || "Falha ao iniciar geração de legendas.");
         }
     };
 

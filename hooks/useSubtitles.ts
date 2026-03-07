@@ -25,11 +25,28 @@ export function useSubtitles(videoId: string) {
     // Pedir pra gerar novas
     const generateMutation = useMutation({
         mutationFn: async ({ language }: { language: string }) => {
-            const { data } = await api.post(`/subtitles/video/${videoId}/generate`, {
-                language,
-                autoGenerate: true
-            });
-            return data.data; // Retorna jobId
+            try {
+                const { data } = await api.post(`/subtitles/video/${videoId}/generate`, {
+                    language,
+                    autoGenerate: true
+                });
+                return data.data; // Retorna jobId
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    throw new Error('Sessão expirada. Faça login novamente.');
+                } else if (error.response?.status === 403) {
+                    throw new Error('Você não tem permissão para gerar legendas neste vídeo.');
+                } else if (error.response?.status === 400) {
+                    throw new Error(`Erro na requisição: ${error.response.data?.message || 'Dados inválidos'}`);
+                } else if (error.response?.status === 500) {
+                    throw new Error('Erro no servidor. Tente novamente em alguns minutos.');
+                } else {
+                    throw error;
+                }
+            }
+        },
+        onError: (error: any) => {
+            console.error('Erro ao gerar legendas:', error.message);
         }
     });
 
@@ -46,8 +63,15 @@ export function useSubtitles(videoId: string) {
 
     // Hook utilitário pro Polling (verifica a fila do Bull / Redis se ja acabou Whisper)
     const checkJobStatus = async (jobId: string) => {
-        const { data } = await api.get(`/subtitles/job/${jobId}`);
-        return data.data;
+        try {
+            const { data } = await api.get(`/subtitles/job/${jobId}`);
+            return data.data;
+        } catch (error: any) {
+            if (error.response?.status === 401) {
+                throw new Error('Sessão expirada');
+            }
+            throw error;
+        }
     };
 
     return {
