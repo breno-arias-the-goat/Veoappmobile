@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAuth } from 'firebase/auth';
 import api from '../lib/api';
 import { completeUpload, getPresignedUrl } from '../services/uploadService';
 
@@ -14,102 +15,131 @@ export const useVideoUpload = () => {
 
     return useMutation({
         mutationFn: async ({ fileUri, scriptId, title, onProgress }: UploadParams) => {
-            try {
-                // 1. Fetch the local file as blob
-                const response = await fetch(fileUri);
-                const blob = await response.blob();
-                const fileSize = blob.size;
+            let lastError: any = null;
+            const maxRetries = 3;
 
-                // Se um título foi providenciado, usa ela como fileName, assegurando extensão .mp4
-                const cleanTitle = title ? title.replace(/[^a-zA-Z0-9.\-_ ()]/g, '') : `Video_${Date.now()}`;
-                const fileName = cleanTitle.toLowerCase().endsWith('.mp4') ? cleanTitle : `${cleanTitle}.mp4`;
-                const contentType = 'video/mp4';
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    // 1. FORCED FIREBASE TOKEN REFRESH (Solves 401 Unauthorized Error)
+                    const auth = getAuth();
+                    if (!auth.currentUser) throw new Error("Usuário não autenticado no Firebase.");
 
-                onProgress?.(5);
+                    const freshToken = await auth.currentUser.getIdToken(true);
 
-                // 2. Get upload info from backend (presigned URL or direct upload flag)
-                const { data: uploadData } = await getPresignedUrl(fileName, contentType, fileSize);
-                const { uploadId, presignedUrl, useDirectUpload, fileKey } = uploadData;
+                    // Update the API axios instance defensively just in case it's used downstream
+                    api.defaults.headers.common['Authorization'] = `Bearer ${freshToken}`;
 
-                onProgress?.(10);
+                    // 2. Fetch the local file as blob
+                    const response = await fetch(fileUri);
+                    const blob = await response.blob();
+                    const fileSize = blob.size;
 
-                if (useDirectUpload) {
-                    // ---- Firebase Storage Mode: POST multipart/form-data to /upload/direct ----
-                    // React Native doesn't support FormData with blob well, so we use XMLHttpRequest
-                    const formData = new FormData();
-                    formData.append('video', {
-                        uri: fileUri,
-                        name: fileName,
-                        type: contentType,
-                    } as any);
-                    if (scriptId) formData.append('scriptId', scriptId);
+                    // Prepare filename
+                    const cleanTitle = title ? title.replace(/[^a-zA-Z0-9.\-_ ()]/g, '') : `Video_${Date.now()}`;
+                    const fileName = cleanTitle.toLowerCase().endsWith('.mp4') ? cleanTitle : `${cleanTitle}.mp4`;
+                    const contentType = 'video/mp4';
 
-                    const result = await new Promise<any>((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        xhr.upload.onprogress = (event) => {
-                            if (event.lengthComputable && onProgress) {
-                                // Map upload progress from 10% to 90%
-                                const uploadPercent = Math.round((event.loaded / event.total) * 80);
-                                onProgress(10 + uploadPercent);
-                            }
-                        };
-                        xhr.onload = () => {
-                            try {
-                                const parsed = JSON.parse(xhr.responseText);
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    resolve(parsed);
-                                } else {
-                                    reject(new Error(parsed?.message || `Upload failed: ${xhr.status}`));
+                    onProgress?.(5);
+
+                    // 3. Get upload info from backend (presigned URL or direct upload flag)
+                    // The backend will validate the freshToken injected into the Axios API instance above
+                    const { data: uploadData } = await getPresignedUrl(fileName, contentType, fileSize);
+                    const { uploadId, presignedUrl, useDirectUpload, fileKey } = uploadData;
+
+                    onProgress?.(10);
+
+                    let resultData: any = null;
+
+                    if (useDirectUpload) {
+                        // ---- Firebase Storage Mode ----
+                        const formData = new FormData();
+                        formData.append('video', {
+                            uri: fileUri,
+                            name: fileName,
+                            type: contentType,
+                        } as any);
+                        if (scriptId) formData.append('scriptId', scriptId);
+
+                        resultData = await new Promise<any>((resolve, reject) => {
+                            const xhr = new XMLHttpRequest();
+                            xhr.upload.onprogress = (event) => {
+                                if (event.lengthComputable && onProgress) {
+                                    const uploadPercent = Math.round((event.loaded / event.total) * 80);
+                                    onProgress(10 + uploadPercent);
                                 }
-                            } catch {
-                                reject(new Error(`Upload failed: ${xhr.status}`));
-                            }
-                        };
-                        xhr.onerror = () => reject(new Error('Erro de rede durante o upload do vídeo'));
+                            };
+                            xhr.onload = () => {
+                                try {
+                                    const parsed = JSON.parse(xhr.responseText);
+                                    if (xhr.status >= 200 && xhr.status < 300) resolve(parsed);
+                                    else reject(new Error(parsed?.message || `Direct upload failed: ${xhr.status}`));
+                                } catch {
+                                    reject(new Error(`Direct upload parse failed: ${xhr.status}`));
+                                }
+                            };
+                            xhr.onerror = () => reject(new Error('Erro de rede no Direct Upload Firebase'));
 
-                        // Get access token from api instance defaults
-                        const token = (api.defaults.headers.common['Authorization'] as string)?.replace('Bearer ', '');
+                            xhr.open('POST', `${api.defaults.baseURL}/upload/direct`);
+                            // EXPLICIT FRESH TOKEN (Prevents 401)
+                            xhr.setRequestHeader('Authorization', `Bearer ${freshToken}`);
+                            xhr.send(formData);
+                        });
 
-                        xhr.open('POST', `${api.defaults.baseURL}/upload/direct`);
-                        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                        xhr.send(formData);
-                    });
+                    } else {
+                        // ---- AWS S3 Presigned URL Mode ----
+                        await new Promise<void>((resolve, reject) => {
+                            const xhr = new XMLHttpRequest();
+                            xhr.upload.onprogress = (event) => {
+                                if (event.lengthComputable && onProgress) {
+                                    const uploadPercent = Math.round((event.loaded / event.total) * 80);
+                                    onProgress(10 + uploadPercent);
+                                }
+                            };
+                            xhr.onload = () => {
+                                // AWS success is 200 OK
+                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                else reject(new Error(`S3 upload failed with status: ${xhr.status}`));
+                            };
+                            xhr.onerror = () => reject(new Error('Network error during S3 upload'));
+
+                            xhr.open('PUT', presignedUrl);
+                            xhr.setRequestHeader('Content-Type', contentType);
+                            // S3 PUT does not need the Bearer token as it uses AWS Signature V4 baked into the URL
+                            xhr.send(blob);
+                        });
+
+                        onProgress?.(95);
+
+                        // Complete upload on backend (Backend relies on our Fresh Firebase Auth Token)
+                        const completeResponse = await completeUpload(uploadId, fileName, fileSize, undefined, scriptId || null);
+                        resultData = completeResponse.data;
+                    }
 
                     onProgress?.(100);
-                    return result?.data;
+                    return resultData;
 
-                } else {
-                    // ---- S3 Presigned URL Mode ----
-                    await new Promise<void>((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        xhr.upload.onprogress = (event) => {
-                            if (event.lengthComputable && onProgress) {
-                                const uploadPercent = Math.round((event.loaded / event.total) * 80);
-                                onProgress(10 + uploadPercent);
-                            }
-                        };
-                        xhr.onload = () => {
-                            if (xhr.status >= 200 && xhr.status < 300) resolve();
-                            else reject(new Error(`S3 upload failed: ${xhr.status}`));
-                        };
-                        xhr.onerror = () => reject(new Error('Network error during S3 upload'));
-                        xhr.open('PUT', presignedUrl);
-                        xhr.setRequestHeader('Content-Type', contentType);
-                        xhr.send(blob);
-                    });
+                } catch (error: any) {
+                    lastError = error;
 
-                    onProgress?.(95);
+                    const errorStatus = error?.response?.status || error?.message?.includes('401') ? 401 : null;
+                    const errorMsg = error?.message || '';
 
-                    // Complete upload on backend
-                    const completeResponse = await completeUpload(uploadId, fileName, fileSize, undefined, scriptId || null);
-                    onProgress?.(100);
-                    return completeResponse.data;
+                    console.warn(`[VideoUpload] Tentativa ${attempt} falhou. Status: ${errorStatus || 'Desconhecido'}`, errorMsg);
+
+                    // Retry ONLY explicitly on 401 Unauthorized or network timeouts
+                    if ((errorStatus === 401 || errorMsg.includes('Network error')) && attempt < maxRetries) {
+                        console.log(`[VideoUpload] 401/Network Error detectado. Forçando re-auth e iniciando fallback Retry ${attempt}/3 em 1.5s...`);
+                        await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+                        continue; // try again in the loop
+                    }
+
+                    break; // Exhausted retries or a critical non-auth error (like 400 Bad Request or 413 Payload Too Large)
                 }
-
-            } catch (error) {
-                console.error('Upload error:', error);
-                throw error;
             }
+
+            // If we escaped the loop without returning data, throw the finalized error
+            console.error('[VideoUpload] Todas as tentativas esgotadas. Falha definitiva:', lastError);
+            throw new Error(`Falha no envio de vídeo: ${lastError?.message || 'Unauthorized / Servidor Recusou'}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['videos'] });

@@ -41,7 +41,16 @@
       ],
       "expo-font",
       "expo-video",
-      "expo-audio"
+      "expo-audio",
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Vilo precisa acessar sua galeria para importar vídeos e adicionar legendas de alta conversão.",
+          "cameraPermission": "O Vilo precisa acessar sua câmera para gravar vídeos diretos com o teleprompter.",
+          "microphonePermission": "O Vilo precisa do seu microfone para transcrever e gravar o áudio do seu vídeo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
