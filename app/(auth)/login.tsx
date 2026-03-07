@@ -31,7 +31,8 @@ export default function LoginScreen() {
             await signIn(data);
             showToast(t('auth.login_success'), 'success');
         } catch (error: any) {
-            const message = error.response?.data?.message || t('auth.auth_failure');
+            console.error('Login Error Breakdown:', error);
+            const message = error.response?.data?.message || error.message || t('auth.auth_failure');
             showToast(message, 'error');
         } finally {
             setLoading(false);
