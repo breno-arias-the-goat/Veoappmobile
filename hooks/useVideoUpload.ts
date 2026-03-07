@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAuth } from 'firebase/auth';
+import * as FileSystem from 'expo-file-system';
+import { FileSystemUploadType } from 'expo-file-system';
 import api from '../lib/api';
 import { completeUpload, getPresignedUrl } from '../services/uploadService';
 
@@ -25,14 +27,12 @@ export const useVideoUpload = () => {
                     if (!auth.currentUser) throw new Error("Usuário não autenticado no Firebase.");
 
                     const freshToken = await auth.currentUser.getIdToken(true);
-
-                    // Update the API axios instance defensively just in case it's used downstream
                     api.defaults.headers.common['Authorization'] = `Bearer ${freshToken}`;
 
-                    // 2. Fetch the local file as blob
-                    const response = await fetch(fileUri);
-                    const blob = await response.blob();
-                    const fileSize = blob.size;
+                    // 2. Fetch the local file info natively without loading into memory (OOM Crash fix)
+                    const fileInfo = await FileSystem.getInfoAsync(fileUri);
+                    if (!fileInfo.exists) throw new Error("Arquivo local de gravação não encontrado.");
+                    const fileSize = fileInfo.size;
 
                     // Prepare filename
                     const cleanTitle = title ? title.replace(/[^a-zA-Z0-9.\-_ ()]/g, '') : `Video_${Date.now()}`;
@@ -41,8 +41,7 @@ export const useVideoUpload = () => {
 
                     onProgress?.(5);
 
-                    // 3. Get upload info from backend (presigned URL or direct upload flag)
-                    // The backend will validate the freshToken injected into the Axios API instance above
+                    // 3. Get upload info from backend
                     const { data: uploadData } = await getPresignedUrl(fileName, contentType, fileSize);
                     const { uploadId, presignedUrl, useDirectUpload, fileKey } = uploadData;
 
@@ -86,31 +85,33 @@ export const useVideoUpload = () => {
                         });
 
                     } else {
-                        // ---- AWS S3 Presigned URL Mode ----
-                        await new Promise<void>((resolve, reject) => {
-                            const xhr = new XMLHttpRequest();
-                            xhr.upload.onprogress = (event) => {
-                                if (event.lengthComputable && onProgress) {
-                                    const uploadPercent = Math.round((event.loaded / event.total) * 80);
+                        // ---- AWS S3 Presigned URL Mode (Native streaming bypasses Blob freezing) ----
+                        const uploadTask = FileSystem.createUploadTask(
+                            presignedUrl,
+                            fileUri,
+                            {
+                                httpMethod: 'PUT',
+                                headers: {
+                                    'Content-Type': contentType,
+                                }
+                            },
+                            (data) => {
+                                if (data.totalBytesExpectedToSend > 0 && onProgress) {
+                                    const uploadPercent = Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 80);
                                     onProgress(10 + uploadPercent);
                                 }
-                            };
-                            xhr.onload = () => {
-                                // AWS success is 200 OK
-                                if (xhr.status >= 200 && xhr.status < 300) resolve();
-                                else reject(new Error(`S3 upload failed with status: ${xhr.status}`));
-                            };
-                            xhr.onerror = () => reject(new Error('Network error during S3 upload'));
+                            }
+                        );
 
-                            xhr.open('PUT', presignedUrl);
-                            xhr.setRequestHeader('Content-Type', contentType);
-                            // S3 PUT does not need the Bearer token as it uses AWS Signature V4 baked into the URL
-                            xhr.send(blob);
-                        });
+                        const response = await uploadTask.uploadAsync();
+
+                        if (!response || response.status < 200 || response.status >= 300) {
+                            throw new Error(`S3 upload failed with status: ${response?.status || 'Unknown'}`);
+                        }
 
                         onProgress?.(95);
 
-                        // Complete upload on backend (Backend relies on our Fresh Firebase Auth Token)
+                        // Complete upload on backend
                         const completeResponse = await completeUpload(uploadId, fileName, fileSize, undefined, scriptId || null);
                         resultData = completeResponse.data;
                     }
