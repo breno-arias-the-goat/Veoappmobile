@@ -1,6 +1,6 @@
-import { useColorScheme as useColorSchemeCore } from 'react-native';
+import { useColorScheme as useColorSchemeCore, ColorSchemeName } from 'react-native';
 
-export const useColorScheme = () => {
+export const useColorScheme = (): NonNullable<ColorSchemeName> => {
   const coreScheme = useColorSchemeCore();
-  return coreScheme === 'unspecified' ? 'light' : coreScheme;
+  return coreScheme ?? 'light';
 };
