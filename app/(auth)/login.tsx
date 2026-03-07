@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, View } from 'react-native';
+import { Image, Text, View, TouchableOpacity, Alert } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -97,8 +97,35 @@ export default function LoginScreen() {
             <View className="mt-8 flex-row justify-center">
                 <Text className="text-text-secondary">{t('auth.no_account')}</Text>
                 <Link href="/(auth)/signup" asChild>
-                    <Text className="text-primary font-bold">{t('auth.signup_link')}</Text>
+                    <Text className="text-primary font-bold ml-1">{t('auth.signup_link')}</Text>
                 </Link>
+            </View>
+
+            {/* Social Logins */}
+            <View className="mt-8 px-4">
+                <View className="flex-row items-center mb-6">
+                    <View className="flex-1 h-[1px] bg-border/30" />
+                    <Text className="mx-4 font-inter-medium text-text-secondary text-sm">Ou continue com</Text>
+                    <View className="flex-1 h-[1px] bg-border/30" />
+                </View>
+
+                <View className="flex-row justify-between mb-8 space-x-4">
+                    <TouchableOpacity
+                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
+                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Google nativo funcionará nas builds finais fora do Expo Go.")}
+                    >
+                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
+                        <Text className="text-white ml-3 font-inter-semibold">Google</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
+                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Apple nativo funcionará nas builds finais para iOS/Mac.")}
+                    >
+                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg' }} style={{ width: 22, height: 22, tintColor: 'white' }} />
+                        <Text className="text-white ml-3 font-inter-semibold">Apple</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
