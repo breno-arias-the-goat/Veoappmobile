@@ -1,37 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { VideoPlayer } from '../../components/specific/VideoPlayer';
-import { Button } from '../../components/base/Button';
+import { VideoPlayer, SubtitleStyle } from '../../components/specific/VideoPlayer';
 import { useSubtitles, Subtitle } from '../../hooks/useSubtitles';
 import api from '../../lib/api';
 import { StatusBar } from 'expo-status-bar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// ─── CapCut Presets ───────────────────────────────────────────────────────────
+const PRESETS: { id: string; name: string; emoji: string; style: SubtitleStyle }[] = [
+    {
+        id: 'classic', name: 'Classic', emoji: '⭐',
+        style: { fontSize: 28, color: '#FFFFFF', highlightColor: '#FFD93D', highlightTextColor: '#000000', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+    },
+    {
+        id: 'fire', name: 'Fire', emoji: '🔥',
+        style: { fontSize: 30, color: '#FFFFFF', highlightColor: '#FF6B35', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+    },
+    {
+        id: 'neon', name: 'Neon', emoji: '💜',
+        style: { fontSize: 28, color: '#FFFFFF', highlightColor: '#5E2BFF', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: false, wordHighlight: true, shadowEnabled: true },
+    },
+    {
+        id: 'tiktok', name: 'TikTok', emoji: '🎵',
+        style: { fontSize: 30, color: '#FFFFFF', highlightColor: '#FE2C55', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: false, wordHighlight: true, shadowEnabled: true },
+    },
+    {
+        id: 'minimal', name: 'Minimal', emoji: '✦',
+        style: { fontSize: 22, color: '#FFFFFF', highlightColor: '#FFFFFF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.65)', position: 'bottom', uppercase: false, wordHighlight: false, shadowEnabled: false },
+    },
+    {
+        id: 'bold', name: 'Bold', emoji: '💥',
+        style: { fontSize: 34, color: '#FFFFFF', highlightColor: '#6C63FF', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+    },
+];
+
+const COLORS = [
+    { val: '#FFFFFF', name: 'Branco' },
+    { val: '#FFD93D', name: 'Hormozi Yellow' },
+    { val: '#00FA9A', name: 'Blink Green' },
+    { val: '#FF3366', name: 'CapCut Red' },
+    { val: '#00FFFF', name: 'Neon Blue' },
+    { val: '#FF9900', name: 'Amazon Orange' },
+    { val: '#5E2BFF', name: 'VEO Purple' },
+    { val: '#FE2C55', name: 'TikTok Pink' },
+];
+
+const FONTS = [
+    { id: 'Inter-Black', label: 'Inter Black', icon: 'bold' },
+    { id: 'Inter-Bold', label: 'Inter Bold', icon: 'font' },
+    { id: 'Inter', label: 'Inter Regular', icon: 'align-left' },
+];
+
 export default function CaptionEditorScreen() {
     const { videoUri, videoId } = useLocalSearchParams();
     const router = useRouter();
-
     const { subtitlesQuery, generateMutation, updateMutation, checkJobStatus } = useSubtitles(videoId as string);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
-
-    const [styleConfig, setStyleConfig] = useState<{ fontSize: number, color: string, backgroundColor: string, position: 'top' | 'middle' | 'bottom', positionX?: number, positionY?: number, fontFamily?: string }>({
-        fontSize: 32,
-        color: '#FFFFFF',
-        backgroundColor: 'rgba(0,0,0,0.0)', // Transparent by default for modern look
-        position: 'middle',
-        fontFamily: 'Inter-Black',
-        positionX: 0.5,
-        positionY: 0.75
-    });
-
+    const [selectedPreset, setSelectedPreset] = useState('classic');
+    const [styleConfig, setStyleConfig] = useState<SubtitleStyle>(PRESETS[0].style);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [activeTab, setActiveTab] = useState<'text' | 'style' | null>('style');
 
     const subtitles: Subtitle[] = subtitlesQuery.data || [];
 
@@ -39,63 +74,51 @@ export default function CaptionEditorScreen() {
         try {
             setIsGenerating(true);
             setProgress(0);
-            const { jobId } = await generateMutation.mutateAsync({ language: 'pt-BR' });
-
+            const result = await generateMutation.mutateAsync({ language: 'pt-BR' });
+            const { jobId } = result;
             let pollCount = 0;
-            const MAX_POLLS = 300; // 300 * 3 segundos = 15 minutos máximo
-            const POLL_INTERVAL = 3000; // 3 segundos
-
+            const MAX_POLLS = 300;
+            const POLL_INTERVAL = 3000;
             const poll = setInterval(async () => {
                 pollCount++;
-
-                // TIMEOUT: Se passar de 15 minutos, desiste
                 if (pollCount > MAX_POLLS) {
                     clearInterval(poll);
                     setIsGenerating(false);
-                    Alert.alert(
-                        "Timeout",
-                        "A geração de legendas excedeu o tempo limite (15 minutos). Tente novamente com um vídeo menor."
-                    );
+                    Alert.alert('Timeout', 'A geração excedeu 15 minutos. Tente com um vídeo menor.');
                     return;
                 }
-
                 try {
                     const statusData = await checkJobStatus(jobId);
                     if (statusData) {
-                        setProgress(statusData.progress || 0);
-
+                        setProgress(statusData.progress ?? 0);
                         if (statusData.status === 'completed') {
                             clearInterval(poll);
                             setIsGenerating(false);
                             subtitlesQuery.refetch();
-                            Alert.alert("Sucesso", "Legendas geradas com sucesso!");
+                            Alert.alert('Sucesso! ✦', 'Suas legendas foram geradas com IA.');
                         } else if (statusData.status === 'failed') {
                             clearInterval(poll);
                             setIsGenerating(false);
-                            Alert.alert(
-                                "Erro na Geração",
-                                statusData.errorMessage || 'Falha ao gerar legendas. Tente novamente.'
-                            );
+                            Alert.alert('Erro na Geração', statusData.errorMessage || 'Falha ao gerar legendas. Tente novamente.');
                         }
                     }
                 } catch (e: any) {
-                    console.error('Erro ao verificar status:', e.message);
-                    // Continua tentando, não desiste na primeira falha
+                    console.warn('[CaptionEditor] Poll error:', e.message);
                 }
             }, POLL_INTERVAL);
-
         } catch (error: any) {
             setIsGenerating(false);
-            Alert.alert("Erro", error.message || "Falha ao iniciar geração de legendas.");
+            Alert.alert('Erro', error.message || 'Falha ao iniciar geração de legendas.');
         }
     };
 
     const saveEdit = async (subtitleId: string) => {
-        if (!editValue.trim() || !subtitleId) {
-            setEditingId(null);
-            return;
+        if (!editValue.trim() || !subtitleId) { setEditingId(null); return; }
+        try {
+            await updateMutation.mutateAsync({ subtitleId, text: editValue });
+        } catch (e: any) {
+            Alert.alert('Erro ao salvar', e.message);
         }
-        await updateMutation.mutateAsync({ subtitleId, text: editValue });
         setEditingId(null);
     };
 
@@ -105,12 +128,17 @@ export default function CaptionEditorScreen() {
             setProgress(100);
             await api.post(`/subtitles/video/${videoId}/render`, styleConfig);
             setIsGenerating(false);
-            Alert.alert("Renderização Iniciada", "Seu vídeo está sendo processado na Nuvem. Ele aparecerá pronto na sua Galeria em breve.");
+            Alert.alert('Renderização Iniciada', 'Seu vídeo está sendo processado na nuvem. Aparecerá pronto na sua galeria em breve.');
             router.replace('/(tabs)/subtitles');
         } catch (error: any) {
             setIsGenerating(false);
-            Alert.alert("Erro Técnico", "Falha ao enviar parâmetros de renderização para a nuvem.");
+            Alert.alert('Erro Técnico', error.message || 'Falha ao enviar parâmetros de renderização para a nuvem.');
         }
+    };
+
+    const applyPreset = (presetId: string) => {
+        const preset = PRESETS.find(p => p.id === presetId);
+        if (preset) { setSelectedPreset(presetId); setStyleConfig(preset.style); }
     };
 
     const formatMs = (ms: number) => {
@@ -120,40 +148,38 @@ export default function CaptionEditorScreen() {
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    // Update state to allow null so we can hide the sheet to view video
-    const [activeTab, setActiveTab] = useState<'text' | 'style' | null>('style'); // Default to style open slightly or null
-
     if (!videoUri || !videoId) {
-        return <View className="flex-1 justify-center items-center bg-[#000000]"><Text className="text-white">Vídeo não encontrado.</Text></View>;
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                <Text style={{ color: 'white' }}>Vídeo não encontrado.</Text>
+            </View>
+        );
     }
 
-    // Tools Pill Bar - Modern approach
     const FloatingToolbar = () => (
-        <View className="absolute bottom-10 left-0 right-0 items-center px-4 z-50">
-            <View className="flex-row items-center bg-black/60 backdrop-blur-xl border border-white/10 p-2 rounded-full shadow-2xl">
+        <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 16, zIndex: 50 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', padding: 8, borderRadius: 50 }}>
                 <TouchableOpacity
                     onPress={() => setActiveTab(activeTab === 'text' ? null : 'text')}
-                    className={`px-5 py-3 rounded-full mr-1 transition-all flex-row items-center ${activeTab === 'text' ? 'bg-primary' : ''}`}
+                    style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 50, marginRight: 4, backgroundColor: activeTab === 'text' ? '#5E2BFF' : 'transparent', flexDirection: 'row', alignItems: 'center' }}
                 >
-                    <FontAwesome name="align-left" size={12} color="white" className="mr-2" />
-                    <Text className="text-white font-inter-semibold text-sm">Textos</Text>
+                    <FontAwesome name="align-left" size={12} color="white" style={{ marginRight: 6 }} />
+                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Textos</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                     onPress={() => setActiveTab(activeTab === 'style' ? null : 'style')}
-                    className={`px-5 py-3 rounded-full mr-1 transition-all flex-row items-center ${activeTab === 'style' ? 'bg-primary' : ''}`}
+                    style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 50, marginRight: 4, backgroundColor: activeTab === 'style' ? '#5E2BFF' : 'transparent', flexDirection: 'row', alignItems: 'center' }}
                 >
-                    <FontAwesome name="paint-brush" size={12} color="white" className="mr-2" />
-                    <Text className="text-white font-inter-semibold text-sm">Estilos</Text>
+                    <FontAwesome name="paint-brush" size={12} color="white" style={{ marginRight: 6 }} />
+                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Estilos</Text>
                 </TouchableOpacity>
-
-                {subtitles.length === 0 && !subtitlesQuery.isLoading && (
+                {subtitles.length === 0 && !subtitlesQuery.isLoading && !isGenerating && (
                     <TouchableOpacity
                         onPress={handleGenerate}
-                        className="px-5 py-3 rounded-full bg-[#5E2BFF]/30 border border-[#5E2BFF]/50 transition-all flex-row items-center ml-1"
+                        style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 50, backgroundColor: 'rgba(94,43,255,0.3)', borderWidth: 1, borderColor: 'rgba(94,43,255,0.5)', flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}
                     >
-                        <FontAwesome name="magic" size={12} color="#A78BFA" className="mr-2" />
-                        <Text className="text-[#A78BFA] font-inter-bold text-sm">Auto IA</Text>
+                        <FontAwesome name="magic" size={12} color="#A78BFA" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 14 }}>Auto IA</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -161,193 +187,209 @@ export default function CaptionEditorScreen() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-black" edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top', 'bottom']}>
             <StatusBar style="light" />
 
-            {/* Immersive Video Background */}
-            <View className="absolute inset-0 z-0 bg-black items-center justify-center">
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
                 <VideoPlayer
                     videoUri={videoUri as string}
                     subtitles={subtitles}
                     subtitleStyle={styleConfig}
                     onSubtitlePositionChange={(x, y) => setStyleConfig({ ...styleConfig, positionX: x, positionY: y })}
                 />
-
-                {/* Generation Overlay */}
                 {isGenerating && (
-                    <View className="absolute inset-0 bg-black/85 justify-center items-center z-[100] backdrop-blur-md">
-                        <ActivityIndicator color="#5E2BFF" size="large" className="mb-6" />
-                        <Text className="text-white font-inter-bold text-2xl mb-3 tracking-tight">Mágica I.A em curso</Text>
-                        <Text className="text-white/60 font-inter mb-8 text-center px-10 text-base leading-relaxed">
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
+                        <ActivityIndicator color="#5E2BFF" size="large" style={{ marginBottom: 24 }} />
+                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 22, marginBottom: 12 }}>Mágica I.A em curso</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32, textAlign: 'center', paddingHorizontal: 40, fontSize: 15, lineHeight: 22 }}>
                             Ouvindo, transcrevendo e animando suas palavras... {progress}%
                         </Text>
-                        <View className="w-64 h-2 bg-white/10 rounded-full overflow-hidden shadow-lg shadow-primary/20">
-                            <View className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
+                        <View style={{ width: 256, height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                            <View style={{ height: '100%', backgroundColor: '#5E2BFF', borderRadius: 4, width: `${progress}%` }} />
                         </View>
                     </View>
                 )}
             </View>
 
-            {/* Floating Top Header */}
-            <View className="absolute top-12 left-0 right-0 z-50 flex-row justify-between items-center px-5 pointer-events-box-none">
+            <View style={{ position: 'absolute', top: 48, left: 0, right: 0, zIndex: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 }}>
                 <TouchableOpacity
                     onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/subtitles')}
-                    className="w-11 h-11 bg-black/40 rounded-full items-center justify-center backdrop-blur-xl border border-white/5 shadow-lg"
+                    style={{ width: 44, height: 44, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}
                 >
                     <FontAwesome name="chevron-left" size={16} color="white" style={{ marginLeft: -2 }} />
                 </TouchableOpacity>
-
                 {!subtitlesQuery.isLoading && subtitles.length > 0 && !isGenerating && (
                     <TouchableOpacity
                         onPress={handleApplyBurn}
-                        className="bg-primary/95 backdrop-blur-md px-6 py-3 rounded-full flex-row items-center border border-white/10 shadow-lg shadow-primary/30"
+                        style={{ backgroundColor: '#5E2BFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 50, flexDirection: 'row', alignItems: 'center' }}
                     >
-                        <Text className="text-white font-inter-bold text-sm mr-2 tracking-wide uppercase">Exportar</Text>
-                        <FontAwesome name="download" size={12} color="white" />
+                        <FontAwesome name="check" size={12} color="white" style={{ marginRight: 6 }} />
+                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>Exportar</Text>
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* Render Toolbar */}
-            {!isGenerating && <FloatingToolbar />}
+            <FloatingToolbar />
 
-            {/* Sliding Bottom Sheet Overlay dynamically active */}
-            {activeTab && !isGenerating && (
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    className="absolute left-0 right-0 bottom-0 z-40 bg-[#0A0A0C]/95 backdrop-blur-3xl rounded-t-[32px] border-t border-white/10 shadow-black shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
-                    style={{ height: SCREEN_HEIGHT * 0.45 }}
-                >
-                    {/* Drag Handle */}
-                    <View className="w-full items-center pt-4 pb-2" onTouchStart={() => setActiveTab(null)}>
-                        <View className="w-12 h-1.5 bg-white/20 rounded-full" />
-                    </View>
+            {activeTab !== null && (
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 40 }}>
+                    <View style={{ backgroundColor: 'rgba(10,10,12,0.97)', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.1)', height: SCREEN_HEIGHT * 0.5 }}>
+                        <TouchableOpacity onPress={() => setActiveTab(null)} style={{ alignItems: 'center', paddingTop: 16, paddingBottom: 8 }}>
+                            <View style={{ width: 48, height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3 }} />
+                        </TouchableOpacity>
 
-                    {subtitlesQuery.isLoading ? (
-                        <View className="flex-1 justify-center items-center">
-                            <ActivityIndicator color="#5E2BFF" size="large" />
-                        </View>
-                    ) : (
-                        <View className="flex-1">
-                            {activeTab === 'text' && (
-                                <View className="flex-1">
-                                    <View className="px-6 py-3 border-b border-white/5 flex-row justify-between items-center">
-                                        <Text className="text-white font-inter-bold text-lg">Suas Palavras</Text>
-                                        <Text className="text-white/40 text-xs font-inter-medium">{subtitles.length} blocos gerados</Text>
-                                    </View>
-                                    <FlatList
-                                        data={subtitles}
-                                        keyExtractor={item => item.id}
-                                        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                                        showsVerticalScrollIndicator={false}
-                                        renderItem={({ item }) => (
-                                            <View className="mb-4 bg-[#18181B] p-5 rounded-[20px] border border-white/5 shadow-lg">
-                                                <View className="flex-row justify-between items-center mb-3">
-                                                    <Text className="text-xs text-[#A78BFA] font-inter-bold bg-[#A78BFA]/10 px-2.5 py-1 rounded-md">
-                                                        {formatMs(item.startTimeMs)} - {formatMs(item.endTimeMs)}
-                                                    </Text>
-                                                    {editingId === item.id ? (
-                                                        <TouchableOpacity onPress={() => saveEdit(item.id)} className="bg-primary/90 px-4 py-1.5 rounded-full flex-row items-center cursor-pointer shadow-sm shadow-primary/20">
-                                                            <FontAwesome name="check" size={10} color="white" className="mr-1.5" />
-                                                            <Text className="text-white font-inter-bold text-xs uppercase tracking-wider">Salvar</Text>
-                                                        </TouchableOpacity>
-                                                    ) : (
-                                                        <TouchableOpacity onPress={() => { setEditingId(item.id); setEditValue(item.text); }} className="px-3 py-1 bg-white/5 rounded-full h-8 w-8 items-center justify-center">
-                                                            <FontAwesome name="pencil" size={14} color="#A1A1AA" />
-                                                        </TouchableOpacity>
-                                                    )}
-                                                </View>
-                                                {editingId === item.id ? (
-                                                    <TextInput
-                                                        className="text-white font-inter text-lg bg-black/40 p-4 rounded-xl border border-primary/50"
-                                                        value={editValue}
-                                                        onChangeText={setEditValue}
-                                                        multiline
-                                                        autoFocus
-                                                        scrollEnabled
-                                                    />
-                                                ) : (
-                                                    <Text className="text-white/95 font-inter text-[17px] leading-snug">{item.text}</Text>
-                                                )}
-                                            </View>
-                                        )}
-                                    />
-                                </View>
-                            )}
-
-                            {activeTab === 'style' && (
-                                <ScrollView showsVerticalScrollIndicator={false} className="flex-1 px-5 pt-2">
-                                    {/* Font Section */}
-                                    <View className="mb-7 mt-2">
-                                        <View className="flex-row items-center justify-between mb-4">
-                                            <Text className="text-sm text-white font-inter-bold uppercase tracking-widest pl-1">Vibes (Fontes)</Text>
+                        {subtitlesQuery.isLoading ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <ActivityIndicator color="#5E2BFF" size="large" />
+                            </View>
+                        ) : (
+                            <View style={{ flex: 1 }}>
+                                {activeTab === 'text' && (
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Suas Palavras</Text>
+                                            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{subtitles.length} blocos</Text>
                                         </View>
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-                                            {[
-                                                { id: 'Inter-Black', label: 'Blink Bold', icon: 'align-center' },
-                                                { id: 'Inter-Bold', label: 'Proxima', icon: 'font' },
-                                                { id: 'Inter-Medium', label: 'Classic', icon: 'align-left' },
-                                                { id: 'Arial', label: 'System', icon: 'text-height' }
-                                            ].map(font => (
+                                        {subtitles.length === 0 ? (
+                                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+                                                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 15, lineHeight: 22 }}>
+                                                    Nenhuma legenda ainda. Use o botão "Auto IA" para gerar.
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            <FlatList
+                                                data={subtitles}
+                                                keyExtractor={item => item.id}
+                                                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                                                showsVerticalScrollIndicator={false}
+                                                renderItem={({ item }) => (
+                                                    <View style={{ marginBottom: 16, backgroundColor: '#18181B', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                            <Text style={{ fontSize: 12, color: '#A78BFA', fontWeight: '700', backgroundColor: 'rgba(167,139,250,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                                                                {formatMs(item.startTimeMs)} - {formatMs(item.endTimeMs)}
+                                                            </Text>
+                                                            {editingId === item.id ? (
+                                                                <TouchableOpacity onPress={() => saveEdit(item.id)} style={{ backgroundColor: '#5E2BFF', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 50, flexDirection: 'row', alignItems: 'center' }}>
+                                                                    <FontAwesome name="check" size={10} color="white" style={{ marginRight: 4 }} />
+                                                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>Salvar</Text>
+                                                                </TouchableOpacity>
+                                                            ) : (
+                                                                <TouchableOpacity onPress={() => { setEditingId(item.id); setEditValue(item.text); }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 50 }}>
+                                                                    <FontAwesome name="pencil" size={14} color="#A1A1AA" />
+                                                                </TouchableOpacity>
+                                                            )}
+                                                        </View>
+                                                        {editingId === item.id ? (
+                                                            <TextInput
+                                                                style={{ color: 'white', fontSize: 17, backgroundColor: 'rgba(0,0,0,0.4)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(94,43,255,0.5)' }}
+                                                                value={editValue}
+                                                                onChangeText={setEditValue}
+                                                                multiline
+                                                                autoFocus
+                                                            />
+                                                        ) : (
+                                                            <Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: 17, lineHeight: 24 }}>{item.text}</Text>
+                                                        )}
+                                                    </View>
+                                                )}
+                                            />
+                                        )}
+                                    </View>
+                                )}
+
+                                {activeTab === 'style' && (
+                                    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, paddingHorizontal: 20 }} contentContainerStyle={{ paddingBottom: 100 }}>
+                                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: 12 }}>✦ Presets CapCut</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20, gap: 10 }}>
+                                            {PRESETS.map(preset => (
+                                                <TouchableOpacity
+                                                    key={preset.id}
+                                                    onPress={() => applyPreset(preset.id)}
+                                                    style={{ alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 2, borderColor: selectedPreset === preset.id ? '#5E2BFF' : 'rgba(255,255,255,0.08)', backgroundColor: selectedPreset === preset.id ? 'rgba(94,43,255,0.2)' : '#18181B', minWidth: 80 }}
+                                                >
+                                                    <Text style={{ fontSize: 24, marginBottom: 4 }}>{preset.emoji}</Text>
+                                                    <Text style={{ color: selectedPreset === preset.id ? '#A78BFA' : 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' }}>{preset.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+
+                                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 24, marginBottom: 12 }}>Fonte</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                                            {FONTS.map(font => (
                                                 <TouchableOpacity
                                                     key={font.id}
                                                     onPress={() => setStyleConfig({ ...styleConfig, fontFamily: font.id })}
-                                                    className={`mr-3 px-6 py-4 rounded-[20px] border flex-row items-center transition-all ${styleConfig.fontFamily === font.id ? 'border-primary bg-primary/20' : 'border-white/5 bg-[#18181B]'}`}
+                                                    style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: styleConfig.fontFamily === font.id ? '#5E2BFF' : 'rgba(255,255,255,0.08)', backgroundColor: styleConfig.fontFamily === font.id ? 'rgba(94,43,255,0.2)' : '#18181B', flexDirection: 'row', alignItems: 'center' }}
                                                 >
-                                                    <FontAwesome name={font.icon as any} size={14} color={styleConfig.fontFamily === font.id ? 'white' : '#71717A'} className="mr-3" />
-                                                    <Text className={`text-sm ${styleConfig.fontFamily === font.id ? 'text-white font-inter-bold' : 'text-zinc-400 font-inter'} ${font.id === 'Inter-Black' ? 'font-inter-black' : font.id === 'Inter-Bold' ? 'font-inter-bold' : ''}`}>{font.label}</Text>
+                                                    <FontAwesome name={font.icon as any} size={14} color={styleConfig.fontFamily === font.id ? 'white' : '#71717A'} style={{ marginRight: 8 }} />
+                                                    <Text style={{ color: styleConfig.fontFamily === font.id ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: styleConfig.fontFamily === font.id ? '700' : '400' }}>{font.label}</Text>
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
-                                    </View>
 
-                                    {/* Size Controller */}
-                                    <View className="mb-7 flex-row justify-between items-center border border-white/5 bg-[#18181B] rounded-[24px] p-5">
-                                        <View>
-                                            <Text className="text-white font-inter-bold text-base">Impacto</Text>
-                                            <Text className="text-[11px] text-zinc-500 font-inter uppercase tracking-wider mt-1">Tamanho da Letra</Text>
+                                        <View style={{ marginTop: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', backgroundColor: '#18181B', borderRadius: 24, padding: 20 }}>
+                                            <View>
+                                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>Impacto</Text>
+                                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>Tamanho da Letra</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 50, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                                                {[22, 28, 34, 42].map(size => (
+                                                    <TouchableOpacity
+                                                        key={size}
+                                                        onPress={() => setStyleConfig({ ...styleConfig, fontSize: size })}
+                                                        style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: styleConfig.fontSize === size ? '#5E2BFF' : 'transparent' }}
+                                                    >
+                                                        <Text style={{ color: styleConfig.fontSize === size ? 'white' : 'rgba(255,255,255,0.4)', fontWeight: '700', fontSize: 13 }}>{size}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
                                         </View>
-                                        <View className="flex-row bg-black/40 rounded-full p-1 border border-white/5">
-                                            {[24, 32, 40, 52].map(size => (
-                                                <TouchableOpacity
-                                                    key={size}
-                                                    onPress={() => setStyleConfig({ ...styleConfig, fontSize: size })}
-                                                    className={`w-10 h-10 rounded-full items-center justify-center transition-all ${styleConfig.fontSize === size ? 'bg-[#5E2BFF] shadow-lg shadow-primary/40' : 'bg-transparent'}`}
-                                                >
-                                                    <Text className={`font-inter-bold text-[13px] ${styleConfig.fontSize === size ? 'text-white' : 'text-zinc-400'}`}>{size}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </View>
 
-                                    {/* Immersive Color Swatches */}
-                                    <View className="mb-20">
-                                        <Text className="text-sm text-white font-inter-bold uppercase tracking-widest pl-1 mb-5">Paleta Neon</Text>
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-                                            {[
-                                                { val: '#FFFFFF', name: 'Branco' },
-                                                { val: '#FFEB3B', name: 'Hormozi Yellow' },
-                                                { val: '#00FA9A', name: 'Blink Green' },
-                                                { val: '#FF3366', name: 'CapCut Red' },
-                                                { val: '#00FFFF', name: 'Neon Blue' },
-                                                { val: '#FF9900', name: 'Amazon Orange' },
-                                                { val: '#E6E6FA', name: 'Lavender' }
-                                            ].map(color => (
+                                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 24, marginBottom: 12 }}>Cor de Destaque</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20, gap: 12 }}>
+                                            {COLORS.map(color => (
                                                 <TouchableOpacity
                                                     key={color.val}
-                                                    onPress={() => setStyleConfig({ ...styleConfig, color: color.val })}
-                                                    className={`mr-4 w-14 h-14 rounded-full border-4 flex items-center justify-center transition-all ${styleConfig.color === color.val ? 'border-primary shadow-[0_0_15px_rgba(94,43,255,0.6)] scale-110' : 'border-white/10'}`}
-                                                    style={{ backgroundColor: color.val }}
+                                                    onPress={() => setStyleConfig({ ...styleConfig, highlightColor: color.val, highlightTextColor: color.val === '#FFFFFF' ? '#000000' : '#FFFFFF' })}
+                                                    style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 3, borderColor: styleConfig.highlightColor === color.val ? '#5E2BFF' : 'rgba(255,255,255,0.1)', backgroundColor: color.val, alignItems: 'center', justifyContent: 'center' }}
                                                 >
-                                                    {styleConfig.color === color.val && <View className="w-3 h-3 rounded-full bg-black/80" />}
+                                                    {styleConfig.highlightColor === color.val && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.6)' }} />}
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
-                                    </View>
-                                </ScrollView>
-                            )}
-                        </View>
-                    )}
+
+                                        <View style={{ marginTop: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#18181B', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                                            <View>
+                                                <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>Destaque Palavra a Palavra</Text>
+                                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>Estilo CapCut / Captions</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                onPress={() => setStyleConfig({ ...styleConfig, wordHighlight: !styleConfig.wordHighlight })}
+                                                style={{ width: 52, height: 30, borderRadius: 15, backgroundColor: styleConfig.wordHighlight ? '#5E2BFF' : 'rgba(255,255,255,0.1)', justifyContent: 'center', paddingHorizontal: 2 }}
+                                            >
+                                                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'white', alignSelf: styleConfig.wordHighlight ? 'flex-end' : 'flex-start' }} />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 24, marginBottom: 12 }}>Posição</Text>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {(['top', 'middle', 'bottom'] as const).map(pos => (
+                                                <TouchableOpacity
+                                                    key={pos}
+                                                    onPress={() => setStyleConfig({ ...styleConfig, position: pos })}
+                                                    style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: styleConfig.position === pos ? '#5E2BFF' : 'rgba(255,255,255,0.08)', backgroundColor: styleConfig.position === pos ? 'rgba(94,43,255,0.2)' : '#18181B', alignItems: 'center' }}
+                                                >
+                                                    <Text style={{ color: styleConfig.position === pos ? '#A78BFA' : 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' }}>
+                                                        {pos === 'top' ? '▲ Topo' : pos === 'middle' ? '◉ Meio' : '▼ Rodapé'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
+                                )}
+                            </View>
+                        )}
+                    </View>
                 </KeyboardAvoidingView>
             )}
         </SafeAreaView>
