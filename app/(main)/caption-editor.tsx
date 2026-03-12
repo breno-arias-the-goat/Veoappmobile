@@ -10,31 +10,31 @@ import { StatusBar } from 'expo-status-bar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ─── CapCut Presets ───────────────────────────────────────────────────────────
+// ─── CapCut Presets (sincronizados com o web) ────────────────────────────────
 const PRESETS: { id: string; name: string; emoji: string; style: SubtitleStyle }[] = [
     {
         id: 'classic', name: 'Classic', emoji: '⭐',
-        style: { fontSize: 28, color: '#FFFFFF', highlightColor: '#FFD93D', highlightTextColor: '#000000', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 22, fontWeight: '800', textColor: '#FFFFFF', highlightColor: '#FFD93D', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.75)', backgroundOpacity: 0.75, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 6, shadowColor: '#000000', borderRadius: 8, padding: 10, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
     },
     {
         id: 'fire', name: 'Fire', emoji: '🔥',
-        style: { fontSize: 30, color: '#FFFFFF', highlightColor: '#FF6B35', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 24, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FF6B35', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#FF6B35', outlineWidth: 3, shadowBlur: 12, shadowColor: '#FF6B35', borderRadius: 0, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: true, wordHighlight: true },
     },
     {
         id: 'neon', name: 'Neon', emoji: '💜',
-        style: { fontSize: 28, color: '#FFFFFF', highlightColor: '#5E2BFF', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: false, wordHighlight: true, shadowEnabled: true },
-    },
-    {
-        id: 'tiktok', name: 'TikTok', emoji: '🎵',
-        style: { fontSize: 30, color: '#FFFFFF', highlightColor: '#FE2C55', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: false, wordHighlight: true, shadowEnabled: true },
-    },
-    {
-        id: 'minimal', name: 'Minimal', emoji: '✦',
-        style: { fontSize: 22, color: '#FFFFFF', highlightColor: '#FFFFFF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.65)', position: 'bottom', uppercase: false, wordHighlight: false, shadowEnabled: false },
+        style: { fontFamily: 'Inter-Black', fontSize: 22, fontWeight: '800', textColor: '#FFFFFF', highlightColor: '#00F5FF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#00F5FF', outlineWidth: 2, shadowBlur: 16, shadowColor: '#00F5FF', borderRadius: 4, padding: 8, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: true },
     },
     {
         id: 'bold', name: 'Bold', emoji: '💥',
-        style: { fontSize: 34, color: '#FFFFFF', highlightColor: '#6C63FF', highlightTextColor: '#FFFFFF', backgroundColor: 'transparent', position: 'bottom', uppercase: true, wordHighlight: true, shadowEnabled: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 26, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#6C63FF', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 4, shadowBlur: 0, shadowColor: '#000000', borderRadius: 6, padding: 6, position: 'bottom', animationIn: 'slideUp', uppercase: true, wordHighlight: true },
+    },
+    {
+        id: 'minimal', name: 'Minimal', emoji: '✦',
+        style: { fontFamily: 'Inter', fontSize: 20, fontWeight: '600', textColor: '#FFFFFF', highlightColor: '#FFFFFF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.6)', backgroundOpacity: 0.6, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 4, shadowColor: '#000000', borderRadius: 12, padding: 12, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: false },
+    },
+    {
+        id: 'tiktok', name: 'TikTok', emoji: '🎵',
+        style: { fontFamily: 'Inter-Black', fontSize: 24, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FE2C55', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 3, shadowBlur: 8, shadowColor: '#000000', borderRadius: 4, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
     },
 ];
 
@@ -125,13 +125,34 @@ export default function CaptionEditorScreen() {
     const handleApplyBurn = async () => {
         try {
             setIsGenerating(true);
-            setProgress(100);
-            await api.post(`/subtitles/video/${videoId}/render`, styleConfig);
+            setProgress(10);
+            // Normaliza campos para o backend (usa os mesmos nomes do web)
+            const exportPayload = {
+                ...styleConfig,
+                // Garante que textColor e color estão ambos presentes
+                textColor: styleConfig.textColor || styleConfig.color || '#FFFFFF',
+                color: styleConfig.textColor || styleConfig.color || '#FFFFFF',
+                // Garante que fontWeight está presente
+                fontWeight: styleConfig.fontWeight || '800',
+                // Garante que campos numéricos têm defaults
+                outlineWidth: styleConfig.outlineWidth ?? 0,
+                shadowBlur: styleConfig.shadowBlur ?? 0,
+                borderRadius: styleConfig.borderRadius ?? 8,
+                padding: styleConfig.padding ?? 8,
+                backgroundOpacity: styleConfig.backgroundOpacity ?? 0,
+            };
+            setProgress(30);
+            await api.post(`/subtitles/video/${videoId}/render`, exportPayload);
             setIsGenerating(false);
-            Alert.alert('Renderização Iniciada', 'Seu vídeo está sendo processado na nuvem. Aparecerá pronto na sua galeria em breve.');
-            router.replace('/(tabs)/subtitles');
+            setProgress(0);
+            Alert.alert(
+                'Exportação Iniciada ✦',
+                'Seu vídeo está sendo processado na nuvem com as legendas. Aparecerá pronto na sua galeria em breve.',
+                [{ text: 'Ver Projetos', onPress: () => router.replace('/(tabs)/subtitles') }]
+            );
         } catch (error: any) {
             setIsGenerating(false);
+            setProgress(0);
             Alert.alert('Erro Técnico', error.message || 'Falha ao enviar parâmetros de renderização para a nuvem.');
         }
     };

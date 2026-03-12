@@ -10,6 +10,9 @@ type UserProfile = {
     firstName: string;
     lastName: string;
     profilePictureUrl?: string | null;
+    isPro?: boolean;
+    credits?: number;
+    subscriptionPlan?: 'free' | 'weekly' | 'yearly';
 };
 
 type AuthContextType = {
@@ -17,6 +20,9 @@ type AuthContextType = {
     user: UserProfile | null;
     userEmail: string | null;
     subscriptionStatus: 'free' | 'pro';
+    isPro: boolean;
+    credits: number;
+    subscriptionPlan: 'free' | 'weekly' | 'yearly';
     isLoading: boolean;
     signIn: (credentials: any) => Promise<void>;
     signUp: (userData: any) => Promise<void>;
@@ -157,12 +163,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Derived from user (mirrors web AuthContext)
+    const isPro = user?.isPro ?? (subscriptionStatus === 'pro');
+    const credits = user?.credits ?? 0;
+    const subscriptionPlan = user?.subscriptionPlan ?? (subscriptionStatus === 'pro' ? 'weekly' : 'free');
+
     return (
         <AuthContext.Provider value={{
             token,
             user,
             userEmail,
             subscriptionStatus,
+            isPro,
+            credits,
+            subscriptionPlan,
             isLoading,
             signIn,
             signUp,

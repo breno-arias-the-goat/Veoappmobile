@@ -13,10 +13,14 @@ interface SubtitleSegment {
 
 export interface SubtitleStyle {
     fontSize?: number;
+    // color is the legacy field; textColor is the new canonical field (matches web)
     color?: string;
+    textColor?: string;
     backgroundColor?: string;
+    backgroundOpacity?: number;
     position?: 'top' | 'middle' | 'bottom';
     fontFamily?: string;
+    fontWeight?: string;
     positionX?: number;
     positionY?: number;
     // CapCut-style extras
@@ -25,9 +29,14 @@ export interface SubtitleStyle {
     outlineColor?: string;
     outlineWidth?: number;
     shadowEnabled?: boolean;
+    shadowBlur?: number;
+    shadowColor?: string;
     uppercase?: boolean;
     wordHighlight?: boolean;
     animationStyle?: 'pop' | 'none';
+    animationIn?: string;
+    borderRadius?: number;
+    padding?: number;
 }
 
 interface VideoPlayerProps {
@@ -71,14 +80,19 @@ function CaptionOverlay({ subtitle, currentMs, style }: CaptionOverlayProps) {
 
     const highlightColor = style.highlightColor || '#FFD93D';
     const highlightTextColor = style.highlightTextColor || '#000000';
-    const textColor = style.color || '#FFFFFF';
+    const textColor = style.textColor || style.color || '#FFFFFF';
     const fontSize = style.fontSize || 28;
     const fontFamily = style.fontFamily || 'Inter-Black';
+    const fontWeight = (style.fontWeight || '800') as any;
     const uppercase = style.uppercase ?? true;
     const wordHighlight = style.wordHighlight ?? true;
     const outlineWidth = style.outlineWidth ?? 0;
     const outlineColor = style.outlineColor ?? '#000000';
     const shadowEnabled = style.shadowEnabled ?? true;
+    const shadowBlur = style.shadowBlur ?? (shadowEnabled ? 6 : 0);
+    const shadowColorVal = style.shadowColor ?? 'rgba(0,0,0,0.9)';
+    const borderRadius = style.borderRadius ?? 8;
+    const padding = style.padding ?? 8;
 
     const positionStyle: any = {
         position: 'absolute' as const,
@@ -95,26 +109,27 @@ function CaptionOverlay({ subtitle, currentMs, style }: CaptionOverlayProps) {
     const baseTextStyle: any = {
         fontFamily,
         fontSize,
+        fontWeight,
         color: textColor,
         textTransform: uppercase ? 'uppercase' : 'none',
-        textShadowColor: shadowEnabled ? 'rgba(0,0,0,0.9)' : 'transparent',
+        textShadowColor: shadowBlur > 0 ? shadowColorVal : 'transparent',
         textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: shadowEnabled ? 6 : 0,
+        textShadowRadius: shadowBlur,
         lineHeight: fontSize * 1.25,
     };
 
     if (!wordHighlight) {
         return (
-            <View style={positionStyle}>
-                <View style={{
-                    backgroundColor: style.backgroundColor || 'transparent',
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                }}>
+        <View style={positionStyle}>
+            <View style={{
+                backgroundColor: style.backgroundColor || 'transparent',
+                borderRadius,
+                paddingHorizontal: padding * 1.5,
+                paddingVertical: padding * 0.6,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+            }}>
                     <Text style={baseTextStyle}>
                         {uppercase ? subtitle.text.toUpperCase() : subtitle.text}
                     </Text>
@@ -130,9 +145,9 @@ function CaptionOverlay({ subtitle, currentMs, style }: CaptionOverlayProps) {
                 flexWrap: 'wrap',
                 justifyContent: 'center',
                 backgroundColor: style.backgroundColor || 'transparent',
-                borderRadius: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
+                borderRadius,
+                paddingHorizontal: padding,
+                paddingVertical: padding * 0.5,
                 gap: 4,
             }}>
                 {words.map((w, i) => {
@@ -152,7 +167,7 @@ function CaptionOverlay({ subtitle, currentMs, style }: CaptionOverlayProps) {
                                 style={{
                                     ...baseTextStyle,
                                     color: isActive ? highlightTextColor : textColor,
-                                    textShadowColor: isActive ? 'transparent' : (shadowEnabled ? 'rgba(0,0,0,0.9)' : 'transparent'),
+                                    textShadowColor: isActive ? 'transparent' : (shadowBlur > 0 ? shadowColorVal : 'transparent'),
                                 }}
                             >
                                 {displayWord}
@@ -264,6 +279,7 @@ export function VideoPlayer({
             <VideoView
                 player={player}
                 style={{ flex: 1 }}
+                contentFit="contain"
                 allowsFullscreen={false}
                 allowsPictureInPicture={false}
                 nativeControls={false}

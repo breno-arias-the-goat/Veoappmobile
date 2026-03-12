@@ -31,7 +31,7 @@ const TERMS_URL = 'https://veo.app/terms';
 const PRIVACY_URL = 'https://veo.app/privacy';
 
 export default function ProfileScreen() {
-    const { signOut, subscriptionStatus, user, updateUserProfile } = useAuth();
+    const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile } = useAuth();
     const router = useRouter();
     const { showToast } = useToast();
     const { t, i18n } = useTranslation();
@@ -136,19 +136,56 @@ export default function ProfileScreen() {
     return (
         <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingTop: 60, paddingBottom: 60 }}>
 
+            {/* User Info Card */}
+            <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#2D1B69', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                    <Text style={{ color: '#A78BFA', fontSize: 20, fontWeight: '700' }}>
+                        {(user?.firstName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                    </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                        {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email || 'Usuário'}
+                    </Text>
+                    <Text style={{ color: '#A1A1AA', fontSize: 12, marginTop: 2 }}>{user?.email || ''}</Text>
+                </View>
+                {isPro ? (
+                    <View style={{ backgroundColor: '#2D1B69', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#5E2BFF' }}>
+                        <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 12 }}>PRO ✦</Text>
+                    </View>
+                ) : (
+                    <View style={{ backgroundColor: '#1F1F1F', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#333' }}>
+                        <Text style={{ color: '#A1A1AA', fontWeight: '600', fontSize: 12 }}>FREE</Text>
+                    </View>
+                )}
+            </View>
+
+            {/* Credits Card */}
+            <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FontAwesome name="bolt" size={18} color="#FFD93D" style={{ marginRight: 10 }} />
+                    <View>
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>Créditos</Text>
+                        <Text style={{ color: '#A1A1AA', fontSize: 12, marginTop: 2 }}>Para geração de legendas</Text>
+                    </View>
+                </View>
+                <Text style={{ color: '#FFD93D', fontWeight: '800', fontSize: 22 }}>{credits}</Text>
+            </View>
+
             {/* Upgrade Banner for Free Users */}
-            {subscriptionStatus === 'free' && (
+            {!isPro && (
                 <TouchableOpacity
                     onPress={() => router.push('/(paywall)')}
-                    className="flex-row items-center bg-[#1A1A1A] rounded-xl p-4 mb-8"
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A0A30', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#5E2BFF' }}
                 >
-                    <View className="bg-primary rounded-lg p-2 mr-4">
-                        <FontAwesome name="star" size={20} color="#FFFFFF" />
+                    <View style={{ backgroundColor: '#5E2BFF', borderRadius: 10, padding: 10, marginRight: 14 }}>
+                        <FontAwesome name="star" size={18} color="#FFFFFF" />
                     </View>
-                    <Text className="text-white font-inter-bold text-lg flex-1">
-                        Desbloqueie todos os recursos
-                    </Text>
-                    <MaterialIcons name="chevron-right" size={24} color="#FFFFFF" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>Upgrade para PRO</Text>
+                        <Text style={{ color: '#A78BFA', fontSize: 12, marginTop: 2 }}>Legendas ilimitadas, todos os presets</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={24} color="#5E2BFF" />
                 </TouchableOpacity>
             )}
 
