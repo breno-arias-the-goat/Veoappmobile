@@ -3,7 +3,9 @@ import { auth } from '../lib/firebase';
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    updateProfile as updateFirebaseAuthProfile
+    updateProfile as updateFirebaseAuthProfile,
+    GoogleAuthProvider,
+    signInWithCredential,
 } from 'firebase/auth';
 
 export const loginUser = async (credentials: any) => {
@@ -28,6 +30,52 @@ export const loginUser = async (credentials: any) => {
     }
 
     // 2. Comunicar com o backend para gerar sessão com TIMEOUT de 15s
+    const idToken = await userCredential.user.getIdToken();
+    try {
+        const response = await Promise.race([
+            api.post('/auth/login', { idToken }),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_api')), 15000)
+            )
+        ]);
+        return response.data;
+    } catch (error: any) {
+        if (error.message === 'timeout_api') {
+            throw new Error('Servidor demorou demais para responder. Tente novamente.');
+        }
+        throw new Error(error.response?.data?.message || 'Falha ao conectar com o servidor.');
+    }
+};
+
+/**
+ * Login com Google usando expo-auth-session.
+ * Recebe o accessToken do Google OAuth e troca por um Firebase ID Token.
+ * Funciona no Expo Go e em builds nativas.
+ */
+export const loginWithGoogle = async (googleAccessToken: string) => {
+    // 1. Criar credencial Firebase a partir do access_token do Google
+    const credential = GoogleAuthProvider.credential(null, googleAccessToken);
+
+    // 2. Fazer login no Firebase com a credencial do Google
+    let userCredential;
+    try {
+        userCredential = await Promise.race([
+            signInWithCredential(auth, credential),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_firebase')), 15000)
+            )
+        ]);
+    } catch (error: any) {
+        if (error.message === 'timeout_firebase') {
+            throw new Error('Tempo de conexão esgotado. Verifique sua internet.');
+        }
+        if (error.code === 'auth/account-exists-with-different-credential') {
+            throw new Error('Este email já está cadastrado com outro método de login. Use email e senha.');
+        }
+        throw new Error('Falha ao autenticar com Google. Tente novamente.');
+    }
+
+    // 3. Obter Firebase ID Token e enviar para o backend
     const idToken = await userCredential.user.getIdToken();
     try {
         const response = await Promise.race([

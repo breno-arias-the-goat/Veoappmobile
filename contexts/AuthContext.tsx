@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import api, { setApiToken } from '../lib/api';
-import { getMe, loginUser, signupUser, updateProfile } from '../services/authService';
+import { getMe, loginUser, loginWithGoogle, signupUser, updateProfile } from '../services/authService';
 
 type UserProfile = {
     id: string;
@@ -25,6 +25,7 @@ type AuthContextType = {
     subscriptionPlan: 'free' | 'weekly' | 'yearly';
     isLoading: boolean;
     signIn: (credentials: any) => Promise<void>;
+    signInWithGoogle: (googleAccessToken: string) => Promise<void>;
     signUp: (userData: any) => Promise<void>;
     signOut: () => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -99,6 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         loadToken();
     }, []);
+
+    const signInWithGoogle = async (googleAccessToken: string) => {
+        const responseData = await loginWithGoogle(googleAccessToken);
+        const accessToken = responseData?.data?.tokens?.accessToken;
+        const userData = responseData?.data?.user;
+        if (accessToken) {
+            setApiToken(accessToken);
+            setToken(accessToken);
+            if (userData) setUser(userData);
+            await persistToken(accessToken);
+        }
+    };
 
     const signIn = async (credentials: any) => {
         const responseData = await loginUser(credentials);
@@ -179,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             subscriptionPlan,
             isLoading,
             signIn,
+            signInWithGoogle,
             signUp,
             signOut,
             refreshUser,

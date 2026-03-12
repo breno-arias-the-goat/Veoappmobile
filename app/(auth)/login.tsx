@@ -1,14 +1,20 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Link } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { Image, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import * as yup from 'yup';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+
+// Necessário para fechar o browser após o OAuth no Expo Go
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
     const { t } = useTranslation();
@@ -21,9 +27,52 @@ export default function LoginScreen() {
     const { control, handleSubmit, formState: { errors } } = useForm({
         resolver: yupResolver(schema)
     });
-    const { signIn } = useAuth();
+    const { signIn, signInWithGoogle } = useAuth();
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    // Configurar Google OAuth com expo-auth-session
+    // makeRedirectUri detecta automaticamente o ambiente:
+    // - Expo Go: usa https://auth.expo.io/@username/slug
+    // - Build nativa: usa viloteleprompterapp://
+    const redirectUri = makeRedirectUri({
+        scheme: 'viloteleprompterapp',
+        path: 'auth',
+    });
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        redirectUri,
+    });
+
+    // Processar resposta do Google OAuth
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { authentication } = response;
+            if (authentication?.accessToken) {
+                handleGoogleLogin(authentication.accessToken);
+            }
+        } else if (response?.type === 'error') {
+            showToast('Erro ao conectar com Google. Tente novamente.', 'error');
+            setGoogleLoading(false);
+        } else if (response?.type === 'dismiss') {
+            setGoogleLoading(false);
+        }
+    }, [response]);
+
+    const handleGoogleLogin = async (accessToken: string) => {
+        try {
+            setGoogleLoading(true);
+            await signInWithGoogle(accessToken);
+            showToast('Login com Google realizado com sucesso!', 'success');
+        } catch (error: any) {
+            const message = error.message || 'Erro ao fazer login com Google.';
+            showToast(message, 'error');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
 
     const onSubmit = async (data: any) => {
         try {
@@ -111,20 +160,22 @@ export default function LoginScreen() {
                 </View>
 
                 <View className="flex-row justify-between mb-8 space-x-4">
-                    <TouchableOpacity
+                     <TouchableOpacity
                         className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
-                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Google nativo funcionará nas builds finais fora do Expo Go.")}
+                        onPress={() => {
+                            setGoogleLoading(true);
+                            promptAsync();
+                        }}
+                        disabled={!request || googleLoading}
                     >
-                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
-                        <Text className="text-white ml-3 font-inter-semibold">Google</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
-                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Apple nativo funcionará nas builds finais para iOS/Mac.")}
-                    >
-                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg' }} style={{ width: 22, height: 22, tintColor: 'white' }} />
-                        <Text className="text-white ml-3 font-inter-semibold">Apple</Text>
+                        {googleLoading ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                            <>
+                                <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
+                                <Text className="text-white ml-3 font-inter-semibold">Google</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
