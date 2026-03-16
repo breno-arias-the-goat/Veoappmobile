@@ -16,7 +16,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 90000, // 90s — Render free tier can take 30-60s to wake from hibernation
+    timeout: 180000, // 180s — Render free tier pode demorar 30-60s para acordar + até 2min para renderizar vídeos longos
 });
 
 api.interceptors.request.use(

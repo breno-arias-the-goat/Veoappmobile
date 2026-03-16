@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -123,37 +125,150 @@ export default function CaptionEditorScreen() {
     };
 
     const handleApplyBurn = async () => {
+        // 1. Solicitar permissão de galeria antes de iniciar
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert(
+                'Permissão Necessária',
+                'Precisamos de acesso à sua galeria para salvar o vídeo exportado. Ative nas configurações do dispositivo.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         try {
             setIsGenerating(true);
-            setProgress(10);
-            // Normaliza campos para o backend (usa os mesmos nomes do web)
+            setProgress(5);
+
+            // 2. Normaliza campos para o backend (usa os mesmos nomes do web)
+            const positionMap: Record<string, string> = { top: 'top', middle: 'middle', center: 'middle', bottom: 'bottom' };
             const exportPayload = {
-                ...styleConfig,
-                // Garante que textColor e color estão ambos presentes
-                textColor: styleConfig.textColor || styleConfig.color || '#FFFFFF',
+                fontSize: styleConfig.fontSize,
+                fontFamily: styleConfig.fontFamily,
                 color: styleConfig.textColor || styleConfig.color || '#FFFFFF',
-                // Garante que fontWeight está presente
+                textColor: styleConfig.textColor || styleConfig.color || '#FFFFFF',
+                backgroundColor: styleConfig.backgroundColor,
+                position: positionMap[styleConfig.position || 'bottom'] || 'bottom',
                 fontWeight: styleConfig.fontWeight || '800',
-                // Garante que campos numéricos têm defaults
+                outlineColor: styleConfig.outlineColor || '#000000',
                 outlineWidth: styleConfig.outlineWidth ?? 0,
                 shadowBlur: styleConfig.shadowBlur ?? 0,
+                shadowColor: styleConfig.shadowColor || '#000000',
+                uppercase: styleConfig.uppercase ?? false,
+                highlightColor: styleConfig.highlightColor,
+                highlightTextColor: styleConfig.highlightTextColor,
                 borderRadius: styleConfig.borderRadius ?? 8,
                 padding: styleConfig.padding ?? 8,
-                backgroundOpacity: styleConfig.backgroundOpacity ?? 0,
+                wordHighlight: styleConfig.wordHighlight ?? true,
             };
-            setProgress(30);
-            await api.post(`/subtitles/video/${videoId}/render`, exportPayload);
+
+            setProgress(15);
+
+            // 3. Chamar o backend para renderizar — retorna URL do vídeo processado
+            //    O backend salva no S3 e retorna a URL, ou retorna o stream diretamente
+            //    Usamos responseType 'json' para obter a URL, depois baixamos com FileSystem
+            let downloadUrl: string | null = null;
+
+            try {
+                // Tenta obter URL do vídeo renderizado (backend pode retornar JSON com url)
+                const response = await api.post(
+                    `/subtitles/video/${videoId}/render`,
+                    exportPayload,
+                    { timeout: 180000 } // 3 minutos
+                );
+                // Se o backend retornar JSON com url do vídeo
+                if (response.data && typeof response.data === 'object' && response.data.url) {
+                    downloadUrl = response.data.url;
+                } else if (response.data && typeof response.data === 'object' && response.data.data?.url) {
+                    downloadUrl = response.data.data.url;
+                }
+            } catch (apiError: any) {
+                // Se o backend retornar stream binário (status 200 mas sem JSON),
+                // precisamos baixar via URL direta com token de auth
+                if (apiError.response?.status === 200 || !apiError.response) {
+                    throw apiError;
+                }
+                throw apiError;
+            }
+
+            setProgress(40);
+
+            if (downloadUrl) {
+                // 4a. Backend retornou URL — baixar com FileSystem
+                const fileName = `veo_legenda_${Date.now()}.mp4`;
+                const fileUri = FileSystem.documentDirectory + fileName;
+
+                const downloadResumable = FileSystem.createDownloadResumable(
+                    downloadUrl,
+                    fileUri,
+                    {},
+                    (downloadProgress) => {
+                        const pct = Math.round(
+                            (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 55
+                        );
+                        setProgress(40 + pct); // 40% → 95%
+                    }
+                );
+
+                const result = await downloadResumable.downloadAsync();
+                if (!result?.uri) throw new Error('Falha ao baixar o vídeo renderizado.');
+
+                setProgress(96);
+                await MediaLibrary.saveToLibraryAsync(result.uri);
+                setProgress(100);
+
+                // Limpa arquivo temporário
+                await FileSystem.deleteAsync(result.uri, { idempotent: true });
+
+            } else {
+                // 4b. Backend retornou stream binário — baixar diretamente via URL com token
+                //     Monta a URL de download com o token de auth no header
+                const { default: apiLib } = await import('../../lib/api');
+                const token = (apiLib.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
+                const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend.onrender.com/api';
+                const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
+
+                const fileName = `veo_legenda_${Date.now()}.mp4`;
+                const fileUri = FileSystem.documentDirectory + fileName;
+
+                const downloadResult = await FileSystem.downloadAsync(
+                    renderUrl,
+                    fileUri,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify(exportPayload),
+                    }
+                );
+
+                if (downloadResult.status !== 200) {
+                    throw new Error(`Servidor retornou status ${downloadResult.status}`);
+                }
+
+                setProgress(96);
+                await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+                setProgress(100);
+
+                await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+            }
+
             setIsGenerating(false);
             setProgress(0);
+
             Alert.alert(
-                'Exportação Iniciada ✦',
-                'Seu vídeo está sendo processado na nuvem com as legendas. Aparecerá pronto na sua galeria em breve.',
+                '✦ Vídeo Salvo na Galeria!',
+                'Seu vídeo com legendas foi exportado e salvo na galeria do dispositivo.',
                 [{ text: 'Ver Projetos', onPress: () => router.replace('/(tabs)/subtitles') }]
             );
+
         } catch (error: any) {
             setIsGenerating(false);
             setProgress(0);
-            Alert.alert('Erro Técnico', error.message || 'Falha ao enviar parâmetros de renderização para a nuvem.');
+            const msg = error.response?.data?.message || error.message || 'Falha ao exportar o vídeo.';
+            Alert.alert('Erro na Exportação', msg);
         }
     };
 
