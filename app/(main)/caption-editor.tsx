@@ -160,6 +160,8 @@ export default function CaptionEditorScreen() {
                 borderRadius: styleConfig.borderRadius ?? 8,
                 padding: styleConfig.padding ?? 8,
                 wordHighlight: styleConfig.wordHighlight ?? true,
+                // Animação de entrada
+                animationIn: styleConfig.animationIn || 'none',
             };
 
             setProgress(15);
