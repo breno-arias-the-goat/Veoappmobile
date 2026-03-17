@@ -1,29 +1,53 @@
 {
   "expo": {
-    "name": "vilo-teleprompter-app",
-    "slug": "vilo-teleprompter-app",
+    "name": "Veo Teleprompter",
+    "slug": "veo-teleprompter",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "viloteleprompterapp",
+    "scheme": "veoteleprompter",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0A0A0F"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.veoteleprompter.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O Veo precisa acessar sua câmera para gravar vídeos com o teleprompter.",
+        "NSMicrophoneUsageDescription": "O Veo precisa do seu microfone para gravar e transcrever o áudio do seu vídeo.",
+        "NSPhotoLibraryUsageDescription": "O Veo precisa acessar sua galeria para importar vídeos e salvar o vídeo exportado com legendas.",
+        "NSPhotoLibraryAddUsageDescription": "O Veo precisa salvar o vídeo exportado com legendas na sua galeria.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0A0A0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "package": "com.veoteleprompter.app",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.viloteleprompterapp"
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -35,7 +59,7 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.viloteleprompterapp",
+          "merchantIdentifier": "merchant.com.veoteleprompter.app",
           "enableGooglePay": false
         }
       ],
@@ -46,14 +70,29 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Vilo precisa acessar sua galeria para importar vídeos e adicionar legendas de alta conversão.",
-          "cameraPermission": "O Vilo precisa acessar sua câmera para gravar vídeos diretos com o teleprompter.",
-          "microphonePermission": "O Vilo precisa do seu microfone para transcrever e gravar o áudio do seu vídeo."
+          "photosPermission": "O Veo precisa acessar sua galeria para importar vídeos e adicionar legendas de alta conversão.",
+          "cameraPermission": "O Veo precisa acessar sua câmera para gravar vídeos diretos com o teleprompter.",
+          "microphonePermission": "O Veo precisa do seu microfone para transcrever e gravar o áudio do seu vídeo."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "O Veo precisa acessar sua galeria para salvar o vídeo exportado com legendas.",
+          "savePhotosPermission": "O Veo precisa salvar o vídeo exportado com legendas na sua galeria.",
+          "isAccessMediaLocationEnabled": true
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "32024ecf-22aa-47e5-a5ef-5e1a89488806"
+      }
+    },
+    "owner": "brenododrop"
   }
 }
