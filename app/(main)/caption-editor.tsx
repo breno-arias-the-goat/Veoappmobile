@@ -160,120 +160,79 @@ export default function CaptionEditorScreen() {
                 borderRadius: styleConfig.borderRadius ?? 8,
                 padding: styleConfig.padding ?? 8,
                 wordHighlight: styleConfig.wordHighlight ?? true,
-                // Animação de entrada
                 animationIn: styleConfig.animationIn || 'none',
             };
 
             setProgress(15);
 
-            // 3. Chamar o backend para renderizar — retorna URL do vídeo processado
-            //    O backend salva no S3 e retorna a URL, ou retorna o stream diretamente
-            //    Usamos responseType 'json' para obter a URL, depois baixamos com FileSystem
-            let downloadUrl: string | null = null;
+            // 3. Obtém o token de autenticação do cache do axios
+            const token = (api.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
+            const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend.onrender.com/api';
+            const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
 
-            try {
-                // Tenta obter URL do vídeo renderizado (backend pode retornar JSON com url)
-                const response = await api.post(
-                    `/subtitles/video/${videoId}/render`,
-                    exportPayload,
-                    { timeout: 180000 } // 3 minutos
-                );
-                // Se o backend retornar JSON com url do vídeo
-                if (response.data && typeof response.data === 'object' && response.data.url) {
-                    downloadUrl = response.data.url;
-                } else if (response.data && typeof response.data === 'object' && response.data.data?.url) {
-                    downloadUrl = response.data.data.url;
+            setProgress(25);
+
+            // 4. Faz a requisição POST com fetch nativo (axios não suporta streams binários no RN)
+            //    O backend retorna o vídeo diretamente como stream binário (Content-Type: video/mp4)
+            const fetchResponse = await fetch(renderUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify(exportPayload),
+            });
+
+            if (!fetchResponse.ok) {
+                // Tenta ler a mensagem de erro do backend
+                let errMsg = `Erro ${fetchResponse.status}`;
+                try {
+                    const errJson = await fetchResponse.json();
+                    errMsg = errJson?.message || errMsg;
+                } catch {
+                    try { errMsg = await fetchResponse.text() || errMsg; } catch {}
                 }
-            } catch (apiError: any) {
-                // Se o backend retornar stream binário (status 200 mas sem JSON),
-                // precisamos baixar via URL direta com token de auth
-                if (apiError.response?.status === 200 || !apiError.response) {
-                    throw apiError;
-                }
-                throw apiError;
+                throw new Error(errMsg);
             }
 
-            setProgress(40);
+            setProgress(60);
 
-            if (downloadUrl) {
-                // 4a. Backend retornou URL — baixar com FileSystem
-                const fileName = `veo_legenda_${Date.now()}.mp4`;
-                const fileUri = FileSystem.documentDirectory + fileName;
+            // 5. Converte o blob para base64 e salva com FileSystem
+            //    (expo-file-system não suporta escrita direta de streams)
+            const blob = await fetchResponse.blob();
 
-                const downloadResumable = FileSystem.createDownloadResumable(
-                    downloadUrl,
-                    fileUri,
-                    {},
-                    (downloadProgress) => {
-                        const pct = Math.round(
-                            (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 55
-                        );
-                        setProgress(40 + pct); // 40% → 95%
-                    }
-                );
+            setProgress(75);
 
-                const result = await downloadResumable.downloadAsync();
-                if (!result?.uri) throw new Error('Falha ao baixar o vídeo renderizado.');
-
-                setProgress(96);
-                await MediaLibrary.saveToLibraryAsync(result.uri);
-                setProgress(100);
-
-                // Limpa arquivo temporário
-                await FileSystem.deleteAsync(result.uri, { idempotent: true });
-
-            } else {
-                // 4b. Backend retornou stream binário — usar fetch nativo com POST
-                //     expo-file-system/legacy não suporta POST com body no downloadAsync
-                const { default: apiLib } = await import('../../lib/api');
-                const token = (apiLib.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
-                const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend.onrender.com/api';
-                const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
-
-                setProgress(30);
-
-                const fetchResponse = await fetch(renderUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    body: JSON.stringify(exportPayload),
-                });
-
-                if (!fetchResponse.ok) {
-                    const errText = await fetchResponse.text();
-                    throw new Error(`Servidor retornou status ${fetchResponse.status}: ${errText}`);
-                }
-
-                setProgress(70);
-
-                // Converte o blob para base64 e salva com FileSystem
-                const blob = await fetchResponse.blob();
+            const base64Data = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
-                const base64Data = await new Promise<string>((resolve, reject) => {
-                    reader.onload = () => {
-                        const result = reader.result as string;
-                        // Remove o prefixo data:video/mp4;base64,
-                        resolve(result.split(',')[1]);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    // Remove o prefixo "data:video/mp4;base64," e retorna só o base64
+                    const commaIdx = result.indexOf(',');
+                    resolve(commaIdx >= 0 ? result.substring(commaIdx + 1) : result);
+                };
+                reader.onerror = () => reject(new Error('Falha ao converter vídeo para base64'));
+                reader.readAsDataURL(blob);
+            });
 
-                const fileName = `veo_legenda_${Date.now()}.mp4`;
-                const fileUri = FileSystem.documentDirectory + fileName;
+            setProgress(85);
 
-                await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-                    encoding: FileSystem.EncodingType.Base64,
-                });
+            const fileName = `veo_legenda_${Date.now()}.mp4`;
+            const fileUri = FileSystem.documentDirectory + fileName;
 
-                setProgress(96);
-                await MediaLibrary.saveToLibraryAsync(fileUri);
-                setProgress(100);
+            await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
 
-                await FileSystem.deleteAsync(fileUri, { idempotent: true });
-            }
+            setProgress(95);
+
+            // 6. Salva na galeria do dispositivo
+            await MediaLibrary.saveToLibraryAsync(fileUri);
+
+            setProgress(100);
+
+            // 7. Remove arquivo temporário
+            await FileSystem.deleteAsync(fileUri, { idempotent: true });
 
             setIsGenerating(false);
             setProgress(0);
@@ -311,6 +270,7 @@ export default function CaptionEditorScreen() {
             </View>
         );
     }
+
 
     const FloatingToolbar = () => (
         <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 16, zIndex: 50 }}>
