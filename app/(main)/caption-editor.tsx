@@ -173,7 +173,7 @@ export default function CaptionEditorScreen() {
 
             // 3. Obtém o token de autenticação do cache do axios
             const token = (api.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
-            const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend.onrender.com/api';
+            const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend-fxzr.onrender.com/api';
             const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
 
             setProgress(25);
