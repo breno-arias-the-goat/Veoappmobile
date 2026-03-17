@@ -165,16 +165,14 @@ export default function VideosScreen() {
                             status={item.status || 'PENDING'}
                             thumbnailUrl={item.thumbnailUrl}
                             onPress={() => {
-                                if (item.videoUrl) {
-                                    router.push({
-                                        pathname: '/(main)/preview',
-                                        params: {
-                                            videoId: item.id,
-                                            videoUri: item.videoUrl,
-                                            isCloudVideo: 'true'
-                                        }
-                                    });
-                                }
+                                router.push({
+                                    pathname: '/(main)/caption-editor',
+                                    params: {
+                                        videoId: item.id,
+                                        videoUri: item.videoUrl || '',
+                                        isCloudVideo: 'true'
+                                    }
+                                });
                             }}
                             onLongPress={() => handleOpenRename(item)}
                         />

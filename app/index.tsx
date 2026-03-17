@@ -1,5 +1,8 @@
 import { Redirect } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Index() {
-    return <Redirect href="/(paywall)" />;
+  const { token } = useAuth();
+  if (token) return <Redirect href="/(tabs)/scripts" />;
+  return <Redirect href="/(auth)/login" />;
 }

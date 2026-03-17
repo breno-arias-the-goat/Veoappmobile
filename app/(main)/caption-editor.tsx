@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { VideoPlayer, SubtitleStyle } from '../../components/specific/VideoPlayer';
 import { useSubtitles, Subtitle } from '../../hooks/useSubtitles';
+import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/api';
 import { StatusBar } from 'expo-status-bar';
 
@@ -61,9 +62,11 @@ export default function CaptionEditorScreen() {
     const { videoUri, videoId } = useLocalSearchParams();
     const router = useRouter();
     const { subtitlesQuery, generateMutation, updateMutation, checkJobStatus } = useSubtitles(videoId as string);
+    const { isPro } = useAuth();
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
     const [selectedPreset, setSelectedPreset] = useState('classic');
     const [styleConfig, setStyleConfig] = useState<SubtitleStyle>(PRESETS[0].style);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,6 +142,9 @@ export default function CaptionEditorScreen() {
         try {
             setIsGenerating(true);
             setProgress(5);
+            setExportStatus('Preparando legendas...');
+            await new Promise(r => setTimeout(r, 500));
+            setExportStatus('Renderizando vídeo com I.A...');
 
             // 2. Normaliza campos para o backend (usa os mesmos nomes do web)
             const positionMap: Record<string, string> = { top: 'top', middle: 'middle', center: 'middle', bottom: 'bottom' };
@@ -241,6 +247,7 @@ export default function CaptionEditorScreen() {
 
             setIsGenerating(false);
             setProgress(0);
+            setExportStatus('');
 
             Alert.alert(
                 '✦ Vídeo Salvo na Galeria!',
@@ -251,12 +258,18 @@ export default function CaptionEditorScreen() {
         } catch (error: any) {
             setIsGenerating(false);
             setProgress(0);
+            setExportStatus('');
             const msg = error.response?.data?.message || error.message || 'Falha ao exportar o vídeo.';
             Alert.alert('Erro na Exportação', msg);
         }
     };
 
+    const PRO_PRESETS = ['fire', 'neon', 'bold', 'tiktok'];
     const applyPreset = (presetId: string) => {
+        if (PRO_PRESETS.includes(presetId) && !isPro) {
+            router.push('/(main)/subscription');
+            return;
+        }
         const preset = PRESETS.find(p => p.id === presetId);
         if (preset) { setSelectedPreset(presetId); setStyleConfig(preset.style); }
     };
@@ -322,9 +335,14 @@ export default function CaptionEditorScreen() {
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
                         <ActivityIndicator color="#5E2BFF" size="large" style={{ marginBottom: 24 }} />
                         <Text style={{ color: 'white', fontWeight: '700', fontSize: 22, marginBottom: 12 }}>Mágica I.A em curso</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32, textAlign: 'center', paddingHorizontal: 40, fontSize: 15, lineHeight: 22 }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 16, textAlign: 'center', paddingHorizontal: 40, fontSize: 15, lineHeight: 22 }}>
                             Ouvindo, transcrevendo e animando suas palavras... {progress}%
                         </Text>
+                        {exportStatus ? (
+                            <Text style={{ color: '#A78BFA', marginBottom: 16, textAlign: 'center', fontSize: 13, fontWeight: '600' }}>
+                                {exportStatus}
+                            </Text>
+                        ) : null}
                         <View style={{ width: 256, height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
                             <View style={{ height: '100%', backgroundColor: '#5E2BFF', borderRadius: 4, width: `${progress}%` }} />
                         </View>

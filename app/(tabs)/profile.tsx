@@ -27,8 +27,8 @@ const LANGUAGES = [
 ];
 
 const SUPPORT_EMAIL = 'suporte@veo.app';
-const TERMS_URL = 'https://veo.app/terms';
-const PRIVACY_URL = 'https://veo.app/privacy';
+const TERMS_URL = 'https://veoteleprompter.com/terms';
+const PRIVACY_URL = 'https://veoteleprompter.com/privacy';
 
 export default function ProfileScreen() {
     const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile } = useAuth();
@@ -96,7 +96,17 @@ export default function ProfileScreen() {
             if (await StoreReview.hasAction()) {
                 await StoreReview.requestReview();
             } else {
-                showToast('Avaliação indisponível no simulador/dispositivo atual.', 'info');
+                // Fallback: open store directly
+                const { Platform } = require('react-native');
+                const url = Platform.OS === 'ios'
+                    ? 'itms-apps://itunes.apple.com/app/id6744289074?action=write-review'
+                    : 'market://details?id=com.brenododrop.veoteleprompter';
+                Linking.openURL(url).catch(() => {
+                    Linking.openURL(Platform.OS === 'ios'
+                        ? 'https://apps.apple.com/app/id6744289074'
+                        : 'https://play.google.com/store/apps/details?id=com.brenododrop.veoteleprompter'
+                    );
+                });
             }
         } catch (error) {
             showToast('Não foi possível abrir a avaliação.', 'error');
@@ -188,6 +198,17 @@ export default function ProfileScreen() {
                     <MaterialIcons name="chevron-right" size={24} color="#5E2BFF" />
                 </TouchableOpacity>
             )}
+
+            {/* Assinatura Section */}
+            <Text className="text-white font-inter-bold text-xl mb-4 ml-1">Assinatura</Text>
+            <View className="bg-[#1A1A1A] rounded-xl mb-8 overflow-hidden">
+                {renderListItem(
+                    <FontAwesome name="credit-card" size={20} color="#FFFFFF" />,
+                    'Gerenciar Assinatura',
+                    () => router.push('/(main)/subscription'),
+                    false
+                )}
+            </View>
 
             {/* Configurações Section */}
             <Text className="text-white font-inter-bold text-xl mb-4 ml-1">Configurações</Text>

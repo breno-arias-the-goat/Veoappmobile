@@ -2,7 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { CameraView } from 'expo-camera';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { RecordControls } from '../../components/specific/RecordControls';
 import { Teleprompter } from '../../components/specific/Teleprompter';
 import { useCamera } from '../../hooks/useCamera';
@@ -103,11 +103,19 @@ export default function RecordScreen() {
 
     if (Platform.OS !== 'web' && cameraPermission !== null && hasPermission === false) {
         return (
-            <View className="flex-1 justify-center items-center bg-background-light dark:bg-background-dark p-lg">
-                <Text className="text-xl font-inter-bold text-center mb-md text-text-dark dark:text-text-light">Sem acesso à câmera</Text>
-                <Text className="text-center text-text-dark dark:text-text-light opacity-70">
-                    Você precisa conceder as permissões de câmera e microfone nas configurações do dispositivo para usar a gravação!
+            <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>
+                    Permissão de câmera necessária
                 </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
+                    Acesse as configurações do seu celular e permita o acesso à câmera e ao microfone para gravar vídeos.
+                </Text>
+                <TouchableOpacity
+                    onPress={checkPermissions}
+                    style={{ backgroundColor: '#5E2BFF', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24 }}
+                >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Permitir Câmera</Text>
+                </TouchableOpacity>
             </View>
         );
     }

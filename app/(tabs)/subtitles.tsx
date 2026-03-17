@@ -113,18 +113,14 @@ export default function SubtitlesScreen() {
                                 status={item.status || 'PENDING'}
                                 thumbnailUrl={item.thumbnailUrl}
                                 onPress={() => {
-                                    if (item.videoUrl) {
-                                        router.push({
-                                            pathname: '/(main)/caption-editor',
-                                            params: {
-                                                videoId: item.id,
-                                                videoUri: item.videoUrl,
-                                                isCloudVideo: 'true'
-                                            }
-                                        });
-                                    } else {
-                                        Alert.alert('Vídeo Pendente', 'Este vídeo ainda está sendo carregado.');
-                                    }
+                                    router.push({
+                                        pathname: '/(main)/caption-editor',
+                                        params: {
+                                            videoId: item.id,
+                                            videoUri: item.videoUrl || '',
+                                            isCloudVideo: 'true'
+                                        }
+                                    });
                                 }}
                             />
                         )}
@@ -139,7 +135,7 @@ export default function SubtitlesScreen() {
                                     description="Você ainda não legendou nenhum vídeo. Clique em Novo para começar as edições animadas."
                                     icon="video-camera"
                                     buttonTitle="Começar"
-                                    actionRoute=""
+                                    actionRoute="/(tabs)/videos"
                                 />
                             </View>
                         )}
