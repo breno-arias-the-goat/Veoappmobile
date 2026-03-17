@@ -174,6 +174,9 @@ export default function CaptionEditorScreen() {
 
             // 4. Faz a requisição POST com fetch nativo (axios não suporta streams binários no RN)
             //    O backend retorna o vídeo diretamente como stream binário (Content-Type: video/mp4)
+            //    Timeout de 10 minutos para vídeos longos
+            const renderAbortController = new AbortController();
+            const renderTimeoutId = setTimeout(() => renderAbortController.abort(), 600000); // 10 min
             const fetchResponse = await fetch(renderUrl, {
                 method: 'POST',
                 headers: {
@@ -181,7 +184,9 @@ export default function CaptionEditorScreen() {
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify(exportPayload),
+                signal: renderAbortController.signal,
             });
+            clearTimeout(renderTimeoutId);
 
             if (!fetchResponse.ok) {
                 // Tenta ler a mensagem de erro do backend
