@@ -3,6 +3,13 @@
     "name": "Veo Teleprompter",
     "slug": "veo-teleprompter",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/32024ecf-22aa-47e5-a5ef-5e1a89488806",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "veoteleprompter",
