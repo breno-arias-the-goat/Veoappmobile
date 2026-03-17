@@ -1,13 +1,13 @@
 import { yupResolver } from '@hookform/resolvers/yup';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
 import { Link } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
 import { useAuth } from '../../contexts/AuthContext';
@@ -115,7 +115,11 @@ export default function LoginScreen() {
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                        {errors.email && <Text className="text-red-400 mt-1 text-sm">{errors.email.message}</Text>}
+                        {errors.email && (
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                                {errors.email.message}
+                            </Text>
+                        )}
                     </View>
                 )}
             />
@@ -132,7 +136,11 @@ export default function LoginScreen() {
                             onChangeText={onChange}
                             value={value}
                         />
-                        {errors.password && <Text className="text-red-400 mt-1 text-sm">{errors.password.message}</Text>}
+                        {errors.password && (
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                                {errors.password.message}
+                            </Text>
+                        )}
                     </View>
                 )}
             />
@@ -160,7 +168,7 @@ export default function LoginScreen() {
                 </View>
 
                 <View className="flex-row justify-between mb-8 space-x-4">
-                     <TouchableOpacity
+                    <TouchableOpacity
                         className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
                         onPress={() => {
                             setGoogleLoading(true);

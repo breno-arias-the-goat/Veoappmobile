@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Text, ActivityIndicator, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CheckoutWebView } from '../../components/specific/CheckoutWebView';
+import { PlanCard } from '../../components/specific/PlanCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlans, useStripeCheckout } from '../../hooks/useSubscription';
-import { PlanCard } from '../../components/specific/PlanCard';
-import { CheckoutWebView } from '../../components/specific/CheckoutWebView';
 import type { PlanData } from '../../services/subscriptionService';
 
 export default function SubscriptionScreen() {
-    const { userEmail, refreshSubscriptionStatus } = useAuth();
+    const router = useRouter();
+    const { isPro, subscriptionPlan, credits, userEmail, refreshSubscriptionStatus } = useAuth();
     const { data: plans, isLoading: loadingPlans } = usePlans();
     const { mutate: createCheckout, isPending: creatingCheckout } = useStripeCheckout();
 
@@ -32,7 +34,6 @@ export default function SubscriptionScreen() {
 
         setSelectedPlanId(planId);
 
-        // ✅ Usa o email real do usuário logado (AuthContext)
         const email = userEmail;
 
         createCheckout(
@@ -66,26 +67,29 @@ export default function SubscriptionScreen() {
     };
 
     return (
-        <View className="flex-1 bg-background-light dark:bg-background-dark">
-            <ScrollView className="flex-1 p-lg" contentContainerStyle={{ paddingBottom: 40 }}>
-                <Text className="text-3xl font-inter-bold text-text-dark dark:text-text-light mt-xl mb-xs">
-                    Assinatura
-                </Text>
-                <Text className="text-base font-inter text-gray-500 dark:text-gray-400 mb-sm">
-                    Escolha o melhor plano para escalar sua criação de conteúdo.
-                </Text>
-
-                {/* 🔒 Security & no-payment badge */}
-                <View className="flex-row items-center bg-emerald-50 dark:bg-emerald-900/20 rounded-xl px-md py-sm mb-xl border border-emerald-200 dark:border-emerald-800 gap-x-2">
-                    <FontAwesome name="lock" size={14} color="#10B981" />
-                    <Text className="text-emerald-700 dark:text-emerald-400 text-sm font-inter-semibold">
-                        Pagamento 100% seguro · Nenhuma cobrança no período de teste
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 16 }}>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16 }}>
+                    <FontAwesome name="chevron-left" size={18} color="#fff" />
+                </TouchableOpacity>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>Minha Assinatura</Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+                <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, marginBottom: 20 }}>
+                    <Text style={{ color: '#A1A1AA', fontSize: 12, marginBottom: 4 }}>Plano Atual</Text>
+                    <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>
+                        {isPro ? `PRO ✦ (${subscriptionPlan || 'Ativo'})` : 'Gratuito'}
+                    </Text>
+                    <Text style={{ color: '#FFD93D', fontSize: 16, fontWeight: '700', marginTop: 8 }}>
+                        {credits} créditos restantes
                     </Text>
                 </View>
 
+                {/* Lista de Planos do Stripe */}
+                <Text className="text-xl font-inter-bold text-white mb-4">Escolha um Plano</Text>
                 {loadingPlans ? (
-                    <View className="py-2xl">
-                        <ActivityIndicator size="large" color="#3975F9" />
+                    <View className="py-8">
+                        <ActivityIndicator size="large" color="#5E2BFF" />
                     </View>
                 ) : (
                     plans?.map((plan: PlanData) => (
@@ -100,13 +104,12 @@ export default function SubscriptionScreen() {
                 )}
             </ScrollView>
 
-            {/* Stripe WebView segura */}
             <CheckoutWebView
                 checkoutUrl={checkoutUrl}
                 isVisible={!!checkoutUrl}
                 onSuccess={handleCheckoutSuccess}
                 onCancel={handleCheckoutCancel}
             />
-        </View>
+        </SafeAreaView>
     );
 }

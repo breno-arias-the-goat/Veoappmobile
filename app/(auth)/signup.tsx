@@ -3,7 +3,7 @@ import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -66,7 +66,11 @@ export default function SignupScreen() {
                             onChangeText={onChange}
                             value={value}
                         />
-                        {errors.name && <Text className="text-red-400 mt-1 text-sm">{errors.name.message}</Text>}
+                        {errors.name && (
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                                {errors.name.message}
+                            </Text>
+                        )}
                     </View>
                 )}
             />
@@ -84,7 +88,11 @@ export default function SignupScreen() {
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                        {errors.email && <Text className="text-red-400 mt-1 text-sm">{errors.email.message}</Text>}
+                        {errors.email && (
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                                {errors.email.message}
+                            </Text>
+                        )}
                     </View>
                 )}
             />
@@ -101,7 +109,11 @@ export default function SignupScreen() {
                             onChangeText={onChange}
                             value={value}
                         />
-                        {errors.password && <Text className="text-red-400 mt-1 text-sm">{errors.password.message}</Text>}
+                        {errors.password && (
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                                {errors.password.message}
+                            </Text>
+                        )}
                     </View>
                 )}
             />
