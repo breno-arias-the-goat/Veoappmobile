@@ -16,27 +16,27 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PRESETS: { id: string; name: string; emoji: string; style: SubtitleStyle }[] = [
     {
         id: 'classic', name: 'Classic', emoji: '⭐',
-        style: { fontFamily: 'Inter-Black', fontSize: 22, fontWeight: '800', textColor: '#FFFFFF', highlightColor: '#FFD93D', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.75)', backgroundOpacity: 0.75, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 6, shadowColor: '#000000', borderRadius: 8, padding: 10, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 28, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FFD93D', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 6, shadowColor: '#000000', borderRadius: 5, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
     },
     {
         id: 'fire', name: 'Fire', emoji: '🔥',
-        style: { fontFamily: 'Inter-Black', fontSize: 24, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FF6B35', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#FF6B35', outlineWidth: 3, shadowBlur: 12, shadowColor: '#FF6B35', borderRadius: 0, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: true, wordHighlight: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 28, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FF6B35', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0)', backgroundOpacity: 0, outlineColor: '#FF6B35', outlineWidth: 2, shadowBlur: 12, shadowColor: '#FF6B35', borderRadius: 5, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: true, wordHighlight: true },
     },
     {
         id: 'neon', name: 'Neon', emoji: '💜',
-        style: { fontFamily: 'Inter-Black', fontSize: 22, fontWeight: '800', textColor: '#FFFFFF', highlightColor: '#00F5FF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#00F5FF', outlineWidth: 2, shadowBlur: 16, shadowColor: '#00F5FF', borderRadius: 4, padding: 8, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 28, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#00F5FF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0)', backgroundOpacity: 0, outlineColor: '#00F5FF', outlineWidth: 2, shadowBlur: 16, shadowColor: '#00F5FF', borderRadius: 5, padding: 8, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: true },
     },
     {
         id: 'bold', name: 'Bold', emoji: '💥',
-        style: { fontFamily: 'Inter-Black', fontSize: 26, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#6C63FF', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 4, shadowBlur: 0, shadowColor: '#000000', borderRadius: 6, padding: 6, position: 'bottom', animationIn: 'slideUp', uppercase: true, wordHighlight: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 32, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#6C63FF', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 3, shadowBlur: 6, shadowColor: '#000000', borderRadius: 5, padding: 8, position: 'bottom', animationIn: 'slideUp', uppercase: true, wordHighlight: true },
     },
     {
         id: 'minimal', name: 'Minimal', emoji: '✦',
-        style: { fontFamily: 'Inter', fontSize: 20, fontWeight: '600', textColor: '#FFFFFF', highlightColor: '#FFFFFF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.6)', backgroundOpacity: 0.6, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 4, shadowColor: '#000000', borderRadius: 12, padding: 12, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: false },
+        style: { fontFamily: 'Inter-Black', fontSize: 24, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FFFFFF', highlightTextColor: '#000000', backgroundColor: 'rgba(0,0,0,0.6)', backgroundOpacity: 0.6, outlineColor: '#000000', outlineWidth: 0, shadowBlur: 6, shadowColor: '#000000', borderRadius: 5, padding: 10, position: 'bottom', animationIn: 'fadeIn', uppercase: false, wordHighlight: false },
     },
     {
         id: 'tiktok', name: 'TikTok', emoji: '🎵',
-        style: { fontFamily: 'Inter-Black', fontSize: 24, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FE2C55', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 3, shadowBlur: 8, shadowColor: '#000000', borderRadius: 4, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
+        style: { fontFamily: 'Inter-Black', fontSize: 28, fontWeight: '900', textColor: '#FFFFFF', highlightColor: '#FE2C55', highlightTextColor: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0)', backgroundOpacity: 0, outlineColor: '#000000', outlineWidth: 2, shadowBlur: 6, shadowColor: '#000000', borderRadius: 5, padding: 8, position: 'bottom', animationIn: 'pop', uppercase: false, wordHighlight: true },
     },
 ];
 
