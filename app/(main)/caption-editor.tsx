@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -223,38 +223,56 @@ export default function CaptionEditorScreen() {
                 await FileSystem.deleteAsync(result.uri, { idempotent: true });
 
             } else {
-                // 4b. Backend retornou stream binário — baixar diretamente via URL com token
-                //     Monta a URL de download com o token de auth no header
+                // 4b. Backend retornou stream binário — usar fetch nativo com POST
+                //     expo-file-system/legacy não suporta POST com body no downloadAsync
                 const { default: apiLib } = await import('../../lib/api');
                 const token = (apiLib.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
                 const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend.onrender.com/api';
                 const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
 
+                setProgress(30);
+
+                const fetchResponse = await fetch(renderUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(exportPayload),
+                });
+
+                if (!fetchResponse.ok) {
+                    const errText = await fetchResponse.text();
+                    throw new Error(`Servidor retornou status ${fetchResponse.status}: ${errText}`);
+                }
+
+                setProgress(70);
+
+                // Converte o blob para base64 e salva com FileSystem
+                const blob = await fetchResponse.blob();
+                const reader = new FileReader();
+                const base64Data = await new Promise<string>((resolve, reject) => {
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        // Remove o prefixo data:video/mp4;base64,
+                        resolve(result.split(',')[1]);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
                 const fileName = `veo_legenda_${Date.now()}.mp4`;
                 const fileUri = FileSystem.documentDirectory + fileName;
 
-                const downloadResult = await FileSystem.downloadAsync(
-                    renderUrl,
-                    fileUri,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                        body: JSON.stringify(exportPayload),
-                    }
-                );
-
-                if (downloadResult.status !== 200) {
-                    throw new Error(`Servidor retornou status ${downloadResult.status}`);
-                }
+                await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
 
                 setProgress(96);
-                await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+                await MediaLibrary.saveToLibraryAsync(fileUri);
                 setProgress(100);
 
-                await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+                await FileSystem.deleteAsync(fileUri, { idempotent: true });
             }
 
             setIsGenerating(false);

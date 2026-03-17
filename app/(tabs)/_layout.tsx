@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Image, useColorScheme } from 'react-native';
+import { Image } from 'react-native';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -11,17 +11,15 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#5E2BFF', // True Primary Tailwind
-        tabBarInactiveTintColor: '#A1A1AA', // Zinc Gray
-        lazy: true, // Optimizes Expo Go memory by not rendering off-screen tabs
+        tabBarActiveTintColor: '#5E2BFF',
+        tabBarInactiveTintColor: '#A1A1AA',
+        lazy: true,
         tabBarStyle: {
           backgroundColor: '#000000',
-          borderTopColor: 'rgba(255,255,255,0.08)', // Apple like minimal border
+          borderTopColor: 'rgba(255,255,255,0.08)',
           borderTopWidth: 1,
         },
         headerStyle: {
@@ -33,11 +31,13 @@ export default function TabLayout() {
           fontFamily: 'Inter_700Bold',
         },
       }}>
+
+      {/* ── Tab 1: Roteiros ─────────────────────────────── */}
       <Tabs.Screen
-        name="index"
+        name="scripts"
         options={{
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-          tabBarLabel: 'Home',
+          title: 'Roteiros',
+          tabBarIcon: ({ color }) => <TabBarIcon name="file-text" color={color} />,
           headerTitle: () => (
             <Image
               source={require('../../assets/images/veo-logo.png')}
@@ -47,31 +47,18 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="scripts"
-        options={{
-          title: 'Scripts',
-          tabBarIcon: ({ color }) => <TabBarIcon name="file-text" color={color} />,
-        }}
-      />
+
+      {/* ── Tab 2: Gravar ───────────────────────────────── */}
       <Tabs.Screen
         name="record"
         options={{
-          href: null,
+          title: 'Gravar',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <TabBarIcon name="microphone" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="create-script"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="edit-script"
-        options={{
-          href: null,
-        }}
-      />
+
+      {/* ── Tab 3: Vídeos ───────────────────────────────── */}
       <Tabs.Screen
         name="videos"
         options={{
@@ -79,14 +66,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="video-camera" color={color} />,
         }}
       />
+
+      {/* ── Tab 4: Legendas ─────────────────────────────── */}
       <Tabs.Screen
-        name="folders"
+        name="subtitles"
         options={{
-          title: 'Pastas',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="folder" color={color} />,
+          title: 'Legendas',
+          tabBarIcon: ({ color }) => <TabBarIcon name="cc" color={color} />,
         }}
       />
+
+      {/* ── Tab 5: Perfil ───────────────────────────────── */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -94,12 +84,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="subtitles"
-        options={{
-          href: null, // Removed from bottom bar
-        }}
-      />
+
+      {/* ── Telas ocultas da nav bar ─────────────────────── */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="create-script" options={{ href: null }} />
+      <Tabs.Screen name="edit-script" options={{ href: null }} />
+      <Tabs.Screen name="folders" options={{ href: null }} />
     </Tabs>
   );
 }

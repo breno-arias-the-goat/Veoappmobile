@@ -101,9 +101,9 @@ function CaptionOverlay({ subtitle, currentMs, style }: CaptionOverlayProps) {
         alignItems: 'center',
         paddingHorizontal: 16,
         zIndex: 20,
-        ...(style.position === 'top' && { top: '10%' }),
-        ...(style.position === 'middle' && { top: '45%' }),
-        ...(!style.position || style.position === 'bottom' && { bottom: '15%' }),
+        ...(style.position === 'top' ? { top: '10%' } : {}),
+        ...(style.position === 'middle' ? { top: '45%' } : {}),
+        ...(!style.position || style.position === 'bottom' ? { bottom: '15%' } : {}),
     };
 
     const baseTextStyle: any = {
