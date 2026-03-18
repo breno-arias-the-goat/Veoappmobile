@@ -34,7 +34,7 @@ type AuthContextType = {
     signOut: () => Promise<void>;
     refreshUser: () => Promise<void>;
     updateUserProfile: (data: { firstName?: string; lastName?: string }) => Promise<void>;
-    refreshSubscriptionStatus: () => Promise<void>;
+    refreshSubscriptionStatus: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -179,17 +179,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const email = user?.email;
         if (!email) {
             console.warn('refreshSubscriptionStatus: nenhum e-mail de usuário disponível.');
-            return;
+            return null;
         }
         try {
             const { data } = await api.get(`/subscriptions/status?email=${encodeURIComponent(email)}`);
             if (data?.status) {
                 setSubscriptionStatus(data.status as 'free' | 'pro');
                 console.log(`✅ Subscription status atualizado: ${data.status}`);
+                return data.status;
             }
         } catch (err) {
             console.error('refreshSubscriptionStatus falhou:', err);
         }
+        return null;
     };
 
     // Derived from user (mirrors web AuthContext)

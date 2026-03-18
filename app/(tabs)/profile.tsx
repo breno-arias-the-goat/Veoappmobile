@@ -31,7 +31,7 @@ const TERMS_URL = 'https://veoteleprompter.com/terms';
 const PRIVACY_URL = 'https://veoteleprompter.com/privacy';
 
 export default function ProfileScreen() {
-    const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile, aiScriptGenerationsThisMonth, videoExportsThisMonth } = useAuth();
+    const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile, aiScriptGenerationsThisMonth, videoExportsThisMonth, refreshSubscriptionStatus } = useAuth();
     const router = useRouter();
     const { showToast } = useToast();
     const { t, i18n } = useTranslation();
@@ -117,8 +117,24 @@ export default function ProfileScreen() {
         Linking.openURL(url).catch(() => showToast('Não foi possível abrir o link.', 'error'));
     };
 
-    const handleRestorePurchase = () => {
-        showToast('Suas compras foram restauradas com sucesso.', 'success');
+    const handleRestorePurchase = async () => {
+        if (!user) {
+            showToast('Você precisa criar uma conta primeiro.', 'error');
+            return;
+        }
+        setIsSaving(true);
+        try {
+            const status = await refreshSubscriptionStatus();
+            if (status === 'pro') {
+                showToast('Suas compras foram restauradas com sucesso!', 'success');
+            } else {
+                showToast('Nenhuma assinatura ativa foi encontrada.', 'info');
+            }
+        } catch (e) {
+            showToast('Erro ao restaurar compras.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const renderListItem = (
