@@ -74,6 +74,7 @@ export default function CaptionEditorScreen() {
     const [editValue, setEditValue] = useState('');
     const [activeTab, setActiveTab] = useState<'text' | 'style' | null>('style');
     const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
+    const [upgradeModalSubtitle, setUpgradeModalSubtitle] = useState('Você atingiu o limite de 5 exportações de vídeos neste mês.');
 
     const subtitles: Subtitle[] = subtitlesQuery.data || [];
 
@@ -131,6 +132,7 @@ export default function CaptionEditorScreen() {
 
     const handleApplyBurn = async () => {
         if (!isPro && videoExportsThisMonth >= 5) {
+            setUpgradeModalSubtitle("Você atingiu o limite de 5 exportações de vídeos neste mês.");
             setUpgradeModalVisible(true);
             return;
         }
@@ -274,7 +276,8 @@ export default function CaptionEditorScreen() {
     const PRO_PRESETS = ['fire', 'neon', 'bold', 'tiktok'];
     const applyPreset = (presetId: string) => {
         if (PRO_PRESETS.includes(presetId) && !isPro) {
-            router.push('/(paywall)');
+            setUpgradeModalSubtitle("Estilos dinâmicos de legenda são exclusivos para assinantes Pro.");
+            setUpgradeModalVisible(true);
             return;
         }
         const preset = PRESETS.find(p => p.id === presetId);
@@ -548,7 +551,7 @@ export default function CaptionEditorScreen() {
 
             <ProUpgradeModal
                 visible={isUpgradeModalVisible}
-                subtitle="Você atingiu o limite de 5 exportações de vídeos neste mês."
+                subtitle={upgradeModalSubtitle}
                 onClose={() => setUpgradeModalVisible(false)}
             />
         </SafeAreaView>
