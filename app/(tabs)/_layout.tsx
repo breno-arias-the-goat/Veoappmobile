@@ -1,6 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'react-native';
 
 function TabBarIcon(props: {
@@ -11,6 +12,8 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -36,7 +39,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="scripts"
         options={{
-          title: 'Roteiros',
+          title: t('tabs.scripts'),
           tabBarIcon: ({ color }) => <TabBarIcon name="file-text" color={color} />,
           headerTitle: () => (
             <Image
@@ -52,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="record"
         options={{
-          title: 'Gravar',
+          title: t('tabs.record'),
           headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="microphone" color={color} />,
         }}
@@ -62,7 +65,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="videos"
         options={{
-          title: 'Vídeos',
+          title: t('tabs.videos'),
           tabBarIcon: ({ color }) => <TabBarIcon name="video-camera" color={color} />,
         }}
       />
@@ -71,7 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="subtitles"
         options={{
-          title: 'Legendas',
+          title: t('tabs.subtitles'),
           tabBarIcon: ({ color }) => <TabBarIcon name="cc" color={color} />,
         }}
       />
@@ -80,7 +83,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />

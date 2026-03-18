@@ -95,7 +95,9 @@
     "scripts": "Scripts",
     "videos": "Vídeos",
     "folders": "Pastas",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "record": "Gravar",
+    "subtitles": "Legendas"
   },
   "folders": {
     "title": "Minhas Pastas",

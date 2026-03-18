@@ -1,6 +1,6 @@
 import { useIsFocused } from '@react-navigation/native';
 import { CameraView } from 'expo-camera';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { RecordControls } from '../../components/specific/RecordControls';
@@ -9,7 +9,7 @@ import { useCamera } from '../../hooks/useCamera';
 import { getScriptById } from '../../services/scriptService';
 
 export default function RecordScreen() {
-    const { scriptId } = useGlobalSearchParams();
+    const { scriptId } = useLocalSearchParams<{ scriptId?: string }>();
     const router = useRouter();
     const isFocused = useIsFocused();
 
