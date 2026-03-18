@@ -6,7 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -15,6 +15,13 @@ import { useToast } from '../../contexts/ToastContext';
 
 // Necessário para fechar o browser após o OAuth no Expo Go
 WebBrowser.maybeCompleteAuthSession();
+
+// Verifica se o Google Auth está disponível na plataforma atual
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
+// No iOS, o iosClientId é obrigatório. Se não estiver configurado, desabilita o Google Auth.
+const isGoogleAuthAvailable = Platform.OS !== 'ios' || !!GOOGLE_IOS_CLIENT_ID;
 
 export default function LoginScreen() {
     const { t } = useTranslation();
@@ -32,22 +39,25 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
 
-    // Configurar Google OAuth com expo-auth-session
-    // makeRedirectUri detecta automaticamente o ambiente:
-    // - Expo Go: usa https://auth.expo.io/@username/slug
-    // - Build nativa: usa viloteleprompterapp://
     const redirectUri = makeRedirectUri({
         scheme: 'viloteleprompterapp',
         path: 'auth',
     });
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    // Só inicializa o Google Auth se estiver disponível na plataforma
+    const googleAuthConfig = isGoogleAuthAvailable ? {
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        ...(GOOGLE_IOS_CLIENT_ID ? { iosClientId: GOOGLE_IOS_CLIENT_ID } : {}),
         redirectUri,
-    });
+    } : null;
+
+    const [request, response, promptAsync] = Google.useAuthRequest(
+        googleAuthConfig ?? { webClientId: undefined }
+    );
 
     // Processar resposta do Google OAuth
     useEffect(() => {
+        if (!isGoogleAuthAvailable) return;
         if (response?.type === 'success') {
             const { authentication } = response;
             if (authentication?.accessToken) {
@@ -159,34 +169,36 @@ export default function LoginScreen() {
                 </Link>
             </View>
 
-            {/* Social Logins */}
-            <View className="mt-8 px-4">
-                <View className="flex-row items-center mb-6">
-                    <View className="flex-1 h-[1px] bg-border/30" />
-                    <Text className="mx-4 font-inter-medium text-text-secondary text-sm">Ou continue com</Text>
-                    <View className="flex-1 h-[1px] bg-border/30" />
-                </View>
+            {/* Social Logins — só exibe se Google Auth estiver disponível */}
+            {isGoogleAuthAvailable && (
+                <View className="mt-8 px-4">
+                    <View className="flex-row items-center mb-6">
+                        <View className="flex-1 h-[1px] bg-border/30" />
+                        <Text className="mx-4 font-inter-medium text-text-secondary text-sm">Ou continue com</Text>
+                        <View className="flex-1 h-[1px] bg-border/30" />
+                    </View>
 
-                <View className="flex-row justify-between mb-8 space-x-4">
-                    <TouchableOpacity
-                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
-                        onPress={() => {
-                            setGoogleLoading(true);
-                            promptAsync();
-                        }}
-                        disabled={!request || googleLoading}
-                    >
-                        {googleLoading ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
-                        ) : (
-                            <>
-                                <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
-                                <Text className="text-white ml-3 font-inter-semibold">Google</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
+                    <View className="flex-row justify-between mb-8 space-x-4">
+                        <TouchableOpacity
+                            className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
+                            onPress={() => {
+                                setGoogleLoading(true);
+                                promptAsync();
+                            }}
+                            disabled={!request || googleLoading}
+                        >
+                            {googleLoading ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                            ) : (
+                                <>
+                                    <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
+                                    <Text className="text-white ml-3 font-inter-semibold">Google</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+            )}
         </View>
     );
 }
