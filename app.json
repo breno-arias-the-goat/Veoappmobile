@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "Veo Teleprompter",
-    "slug": "veo-teleprompter",
+    "name": "Vilo Teleprompter",
+    "slug": "vilo-teleprompter-app",
     "version": "1.0.0",
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
-      "url": "https://u.expo.dev/32024ecf-22aa-47e5-a5ef-5e1a89488806",
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "url": "https://u.expo.dev/46682329-7ab3-4a69-8b7e-707ad1794c16",
+      "channel": "main",
+      "checkAutomatically": "ON_LOAD"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -24,10 +25,10 @@
       "bundleIdentifier": "com.veoteleprompter.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "O Veo precisa acessar sua câmera para gravar vídeos com o teleprompter.",
-        "NSMicrophoneUsageDescription": "O Veo precisa do seu microfone para gravar e transcrever o áudio do seu vídeo.",
-        "NSPhotoLibraryUsageDescription": "O Veo precisa acessar sua galeria para importar vídeos e salvar o vídeo exportado com legendas.",
-        "NSPhotoLibraryAddUsageDescription": "O Veo precisa salvar o vídeo exportado com legendas na sua galeria.",
+        "NSCameraUsageDescription": "O Veo precisa acessar sua c\u00e2mera para gravar v\u00eddeos com o teleprompter.",
+        "NSMicrophoneUsageDescription": "O Veo precisa do seu microfone para gravar e transcrever o \u00e1udio do seu v\u00eddeo.",
+        "NSPhotoLibraryUsageDescription": "O Veo precisa acessar sua galeria para importar v\u00eddeos e salvar o v\u00eddeo exportado com legendas.",
+        "NSPhotoLibraryAddUsageDescription": "O Veo precisa salvar o v\u00eddeo exportado com legendas na sua galeria.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -42,6 +43,18 @@
       "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -78,16 +91,16 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Veo precisa acessar sua galeria para importar vídeos e adicionar legendas de alta conversão.",
-          "cameraPermission": "O Veo precisa acessar sua câmera para gravar vídeos diretos com o teleprompter.",
-          "microphonePermission": "O Veo precisa do seu microfone para transcrever e gravar o áudio do seu vídeo."
+          "photosPermission": "O Veo precisa acessar sua galeria para importar v\u00eddeos e adicionar legendas de alta convers\u00e3o.",
+          "cameraPermission": "O Veo precisa acessar sua c\u00e2mera para gravar v\u00eddeos diretos com o teleprompter.",
+          "microphonePermission": "O Veo precisa do seu microfone para transcrever e gravar o \u00e1udio do seu v\u00eddeo."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "O Veo precisa acessar sua galeria para salvar o vídeo exportado com legendas.",
-          "savePhotosPermission": "O Veo precisa salvar o vídeo exportado com legendas na sua galeria.",
+          "photosPermission": "O Veo precisa acessar sua galeria para salvar o v\u00eddeo exportado com legendas.",
+          "savePhotosPermission": "O Veo precisa salvar o v\u00eddeo exportado com legendas na sua galeria.",
           "isAccessMediaLocationEnabled": true
         }
       ]
@@ -98,7 +111,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "32024ecf-22aa-47e5-a5ef-5e1a89488806"
+        "projectId": "46682329-7ab3-4a69-8b7e-707ad1794c16"
       }
     },
     "owner": "brenododrop"
