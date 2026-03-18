@@ -267,7 +267,7 @@ export default function CaptionEditorScreen() {
     const PRO_PRESETS = ['fire', 'neon', 'bold', 'tiktok'];
     const applyPreset = (presetId: string) => {
         if (PRO_PRESETS.includes(presetId) && !isPro) {
-            router.push('/(main)/subscription');
+            router.push('/(paywall)');
             return;
         }
         const preset = PRESETS.find(p => p.id === presetId);

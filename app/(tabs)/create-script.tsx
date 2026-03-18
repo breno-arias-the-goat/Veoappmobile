@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'rea
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { createScript } from '../../services/scriptService';
 
 const CONTEXTS = [
@@ -47,6 +48,7 @@ export default function CreateScriptScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { isPro } = useAuth();
 
     const [title, setTitle] = useState('');
     const [topic, setTopic] = useState('');
@@ -57,6 +59,11 @@ export default function CreateScriptScreen() {
     const [loadingStep, setLoadingStep] = useState(0);
 
     const handleCreate = async () => {
+        if (!isPro) {
+            router.push('/(paywall)');
+            return;
+        }
+
         if (!title.trim() && !topic.trim()) {
             showToast('Por favor, informe o título ou tema do script', 'warning');
             return;

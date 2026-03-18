@@ -1,8 +1,12 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+
+let hasShownSessionPaywall = false;
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -13,6 +17,19 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { isPro, isLoading } = useAuth();
+
+  useEffect(() => {
+    // Se terminou de carregar o usuário, ele não é Pro, e o aviso ainda não foi exibido na sessão:
+    if (!isLoading && !isPro && !hasShownSessionPaywall) {
+      hasShownSessionPaywall = true;
+      // Pequeno timeout visual para evitar piscar o componente enquanto renderiza
+      setTimeout(() => {
+        router.push('/(paywall)');
+      }, 500);
+    }
+  }, [isPro, isLoading, router]);
 
   return (
     <Tabs
