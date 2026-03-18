@@ -13,6 +13,8 @@ import { UploadModal } from '../../components/specific/UploadModal';
 import { RenameModal } from '../../components/specific/RenameModal';
 import { useVideos } from '../../hooks/useVideos';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
+import { useAuth } from '../../contexts/AuthContext';
+import { ProUpgradeModal } from '../../components/specific/ProUpgradeModal';
 import { updateVideo } from '../../services/videoService';
 
 function SkeletonCard() {
@@ -84,10 +86,12 @@ export default function VideosScreen() {
     const router = useRouter();
     const { data: videos, isLoading, refetch, isRefetching } = useVideos();
     const uploadVideoMutation = useVideoUpload();
+    const { isPro } = useAuth();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
     // Rename State
     const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -103,6 +107,11 @@ export default function VideosScreen() {
     }, [videos, searchQuery]);
 
     const pickAndUploadVideo = async () => {
+        if (!isPro && videos && videos.length >= 10) {
+            setUpgradeModalVisible(true);
+            return;
+        }
+
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (permissionResult.status !== 'granted') {

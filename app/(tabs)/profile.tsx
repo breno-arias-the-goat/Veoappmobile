@@ -31,7 +31,7 @@ const TERMS_URL = 'https://veoteleprompter.com/terms';
 const PRIVACY_URL = 'https://veoteleprompter.com/privacy';
 
 export default function ProfileScreen() {
-    const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile } = useAuth();
+    const { signOut, subscriptionStatus, isPro, credits, subscriptionPlan, user, updateUserProfile, aiScriptGenerationsThisMonth, videoExportsThisMonth } = useAuth();
     const router = useRouter();
     const { showToast } = useToast();
     const { t, i18n } = useTranslation();
@@ -184,19 +184,40 @@ export default function ProfileScreen() {
 
             {/* Upgrade Banner for Free Users */}
             {!isPro && (
-                <TouchableOpacity
-                    onPress={() => router.push('/(paywall)')}
-                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A0A30', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#5E2BFF' }}
-                >
-                    <View style={{ backgroundColor: '#5E2BFF', borderRadius: 10, padding: 10, marginRight: 14 }}>
-                        <FontAwesome name="star" size={18} color="#FFFFFF" />
+                <View className="mb-5">
+                    <TouchableOpacity
+                        onPress={() => router.push('/(paywall)')}
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A0A30', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#5E2BFF' }}
+                    >
+                        <View style={{ backgroundColor: '#5E2BFF', borderRadius: 10, padding: 10, marginRight: 14 }}>
+                            <FontAwesome name="star" size={18} color="#FFFFFF" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>Upgrade para PRO</Text>
+                            <Text style={{ color: '#A78BFA', fontSize: 12, marginTop: 2 }}>Legendas ilimitadas, todos os presets</Text>
+                        </View>
+                        <MaterialIcons name="chevron-right" size={24} color="#5E2BFF" />
+                    </TouchableOpacity>
+
+                    <View className="flex-row gap-3">
+                        <View className="flex-1 bg-[#1A1A1A] rounded-xl p-4 border border-[#333]">
+                            <Text className="text-[#A1A1AA] font-inter text-[11px] mb-2 font-semibold uppercase">Vídeos Exportados</Text>
+                            <View className="flex-row items-baseline mb-1">
+                                <Text className="text-white font-inter-bold text-2xl">{videoExportsThisMonth}</Text>
+                                <Text className="text-[#A1A1AA] font-inter-medium text-sm ml-1">/ 5</Text>
+                            </View>
+                            <Text className="text-[#A1A1AA] font-inter text-[10px]">Este mês</Text>
+                        </View>
+                        <View className="flex-1 bg-[#1A1A1A] rounded-xl p-4 border border-[#333]">
+                            <Text className="text-[#A1A1AA] font-inter text-[11px] mb-2 font-semibold uppercase">Roteiros I.A</Text>
+                            <View className="flex-row items-baseline mb-1">
+                                <Text className="text-white font-inter-bold text-2xl">{aiScriptGenerationsThisMonth}</Text>
+                                <Text className="text-[#A1A1AA] font-inter-medium text-sm ml-1">/ 3</Text>
+                            </View>
+                            <Text className="text-[#A1A1AA] font-inter text-[10px]">Este mês</Text>
+                        </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>Upgrade para PRO</Text>
-                        <Text style={{ color: '#A78BFA', fontSize: 12, marginTop: 2 }}>Legendas ilimitadas, todos os presets</Text>
-                    </View>
-                    <MaterialIcons name="chevron-right" size={24} color="#5E2BFF" />
-                </TouchableOpacity>
+                </View>
             )}
 
             {/* Assinatura Section */}

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
+import { ProUpgradeModal } from '../../components/specific/ProUpgradeModal';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { createScript } from '../../services/scriptService';
@@ -48,7 +49,7 @@ export default function CreateScriptScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const { showToast } = useToast();
-    const { isPro } = useAuth();
+    const { isPro, aiScriptGenerationsThisMonth } = useAuth();
 
     const [title, setTitle] = useState('');
     const [topic, setTopic] = useState('');
@@ -57,6 +58,7 @@ export default function CreateScriptScreen() {
     const [selectedDuration, setSelectedDuration] = useState(2);
     const [loading, setLoading] = useState(false);
     const [loadingStep, setLoadingStep] = useState(0);
+    const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
     const handleCreate = async () => {
         if (!isPro) {
@@ -279,6 +281,12 @@ export default function CreateScriptScreen() {
                     </Text>
                 </View>
             </ScrollView>
+
+            <ProUpgradeModal
+                visible={isUpgradeModalVisible}
+                subtitle="Você atingiu o limite de 3 roteiros gerados com Inteligência Artificial neste mês."
+                onClose={() => setUpgradeModalVisible(false)}
+            />
         </View>
     );
 }

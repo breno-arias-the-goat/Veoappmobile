@@ -10,6 +10,7 @@ import { useSubtitles, Subtitle } from '../../hooks/useSubtitles';
 import { useAuth } from '../../contexts/AuthContext';
 import { getApiToken } from '../../lib/api';
 import { StatusBar } from 'expo-status-bar';
+import { ProUpgradeModal } from '../../components/specific/ProUpgradeModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -62,7 +63,7 @@ export default function CaptionEditorScreen() {
     const { videoUri, videoId } = useLocalSearchParams();
     const router = useRouter();
     const { subtitlesQuery, generateMutation, updateMutation, checkJobStatus } = useSubtitles(videoId as string);
-    const { isPro } = useAuth();
+    const { isPro, videoExportsThisMonth } = useAuth();
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -72,6 +73,7 @@ export default function CaptionEditorScreen() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
     const [activeTab, setActiveTab] = useState<'text' | 'style' | null>('style');
+    const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
     const subtitles: Subtitle[] = subtitlesQuery.data || [];
 
@@ -128,6 +130,11 @@ export default function CaptionEditorScreen() {
     };
 
     const handleApplyBurn = async () => {
+        if (!isPro && videoExportsThisMonth >= 5) {
+            setUpgradeModalVisible(true);
+            return;
+        }
+
         // 1. Solicitar permissão de galeria antes de iniciar
         const { status } = await MediaLibrary.requestPermissionsAsync();
         if (status !== 'granted') {
@@ -446,7 +453,14 @@ export default function CaptionEditorScreen() {
                                                     onPress={() => applyPreset(preset.id)}
                                                     style={{ alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 2, borderColor: selectedPreset === preset.id ? '#5E2BFF' : 'rgba(255,255,255,0.08)', backgroundColor: selectedPreset === preset.id ? 'rgba(94,43,255,0.2)' : '#18181B', minWidth: 80 }}
                                                 >
-                                                    <Text style={{ fontSize: 24, marginBottom: 4 }}>{preset.emoji}</Text>
+                                                    <View style={{ position: 'relative' }}>
+                                                        <Text style={{ fontSize: 24, marginBottom: 4 }}>{preset.emoji}</Text>
+                                                        {PRO_PRESETS.includes(preset.id) && !isPro && (
+                                                            <View style={{ position: 'absolute', top: -4, right: -4, backgroundColor: '#000', borderRadius: 8, padding: 2 }}>
+                                                                <FontAwesome name="lock" size={12} color="#F87171" />
+                                                            </View>
+                                                        )}
+                                                    </View>
                                                     <Text style={{ color: selectedPreset === preset.id ? '#A78BFA' : 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' }}>{preset.name}</Text>
                                                 </TouchableOpacity>
                                             ))}
@@ -531,6 +545,12 @@ export default function CaptionEditorScreen() {
                     </View>
                 </KeyboardAvoidingView>
             )}
+
+            <ProUpgradeModal
+                visible={isUpgradeModalVisible}
+                subtitle="Você atingiu o limite de 5 exportações de vídeos neste mês."
+                onClose={() => setUpgradeModalVisible(false)}
+            />
         </SafeAreaView>
     );
 }

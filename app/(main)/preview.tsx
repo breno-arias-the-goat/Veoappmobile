@@ -14,6 +14,9 @@ import { UploadModal } from '../../components/specific/UploadModal';
 import { VideoPlayer } from '../../components/specific/VideoPlayer';
 import { VideoTrimmer } from '../../components/specific/VideoTrimmer';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
+import { useVideos } from '../../hooks/useVideos';
+import { useAuth } from '../../contexts/AuthContext';
+import { ProUpgradeModal } from '../../components/specific/ProUpgradeModal';
 
 
 
@@ -21,6 +24,8 @@ export default function PreviewScreen() {
     const { videoUri, scriptId, isCloudVideo, videoId } = useLocalSearchParams();
     const router = useRouter();
     const uploadVideoMutation = useVideoUpload();
+    const { data: videos } = useVideos();
+    const { isPro } = useAuth();
 
     const [startTime, setStartTime] = useState(0);
     const [endTime, setEndTime] = useState(0); // Will be set by trimmer
@@ -28,6 +33,7 @@ export default function PreviewScreen() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [videoTitle, setVideoTitle] = useState('Meu Projeto'); // Variavel Novo
+    const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
     const handleRangeChange = (start: number, end: number) => {
         setStartTime(start);
@@ -101,6 +107,11 @@ export default function PreviewScreen() {
     const handleSave = async () => {
         if (!videoUri || typeof videoUri !== 'string') return;
 
+        if (!isPro && videos && videos.length >= 10) {
+            setUpgradeModalVisible(true);
+            return;
+        }
+
         try {
             setIsProcessing(true);
             setUploadProgress(0);
@@ -129,6 +140,11 @@ export default function PreviewScreen() {
 
     const handleInstantSubtitles = async () => {
         if (!videoUri || typeof videoUri !== 'string') return;
+
+        if (!isPro && videos && videos.length >= 10) {
+            setUpgradeModalVisible(true);
+            return;
+        }
 
         try {
             setIsProcessing(true);
@@ -313,6 +329,12 @@ export default function PreviewScreen() {
                 visible={isProcessing || uploadVideoMutation.isPending}
                 progress={isCloudVideo === 'true' ? 100 : uploadProgress}
                 title={isCloudVideo === 'true' ? "Baixando da Nuvem..." : uploadProgress > 0 ? "Enviando Vídeo..." : "Processando..."}
+            />
+
+            <ProUpgradeModal
+                visible={isUpgradeModalVisible}
+                subtitle="Você atingiu o limite de 10 projetos simultâneos. Faça upgrade ou exclua vídeos para adicionar mais."
+                onClose={() => setUpgradeModalVisible(false)}
             />
         </SafeAreaView>
     );

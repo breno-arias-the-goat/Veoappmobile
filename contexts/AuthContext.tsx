@@ -13,6 +13,8 @@ type UserProfile = {
     isPro?: boolean;
     credits?: number;
     subscriptionPlan?: 'free' | 'weekly' | 'yearly';
+    aiScriptGenerationsThisMonth?: number;
+    videoExportsThisMonth?: number;
 };
 
 type AuthContextType = {
@@ -23,6 +25,8 @@ type AuthContextType = {
     isPro: boolean;
     credits: number;
     subscriptionPlan: 'free' | 'weekly' | 'yearly';
+    aiScriptGenerationsThisMonth: number;
+    videoExportsThisMonth: number;
     isLoading: boolean;
     signIn: (credentials: any) => Promise<void>;
     signInWithGoogle: (googleAccessToken: string) => Promise<void>;
@@ -192,6 +196,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isPro = user?.isPro ?? (subscriptionStatus === 'pro');
     const credits = user?.credits ?? 0;
     const subscriptionPlan = user?.subscriptionPlan ?? (subscriptionStatus === 'pro' ? 'weekly' : 'free');
+    const aiScriptGenerationsThisMonth = user?.aiScriptGenerationsThisMonth ?? 0;
+    const videoExportsThisMonth = user?.videoExportsThisMonth ?? 0;
 
     return (
         <AuthContext.Provider value={{
@@ -202,6 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isPro,
             credits,
             subscriptionPlan,
+            aiScriptGenerationsThisMonth,
+            videoExportsThisMonth,
             isLoading,
             signIn,
             signInWithGoogle,

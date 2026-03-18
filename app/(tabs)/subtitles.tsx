@@ -9,16 +9,24 @@ import { useVideos } from '../../hooks/useVideos';
 import { UploadModal } from '../../components/specific/UploadModal';
 import { VideoCard } from '../../components/specific/VideoCard';
 import { EmptyState } from '../../components/specific/EmptyState';
+import { useAuth } from '../../contexts/AuthContext';
+import { ProUpgradeModal } from '../../components/specific/ProUpgradeModal';
 
 export default function SubtitlesScreen() {
     const router = useRouter();
     const uploadVideoMutation = useVideoUpload();
     const { data: videos, isLoading, refetch, isRefetching } = useVideos();
+    const { isPro } = useAuth();
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUpgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
     const pickAndUploadVideo = async () => {
+        if (!isPro && videos && videos.length >= 10) {
+            setUpgradeModalVisible(true);
+            return;
+        }
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (permissionResult.status !== 'granted') {
@@ -148,6 +156,12 @@ export default function SubtitlesScreen() {
                 visible={isProcessing || uploadVideoMutation.isPending}
                 progress={uploadProgress}
                 title={uploadProgress > 0 ? "Importando Vídeo..." : "Preparando Estúdio..."}
+            />
+
+            <ProUpgradeModal
+                visible={isUpgradeModalVisible}
+                subtitle="Você atingiu o limite de 10 projetos simultâneos. Faça upgrade ou exclua vídeos para adicionar mais."
+                onClose={() => setUpgradeModalVisible(false)}
             />
         </View>
     );
