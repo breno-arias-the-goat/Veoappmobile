@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { FileSystemUploadType } from 'expo-file-system/legacy';
 import api from '../lib/api';
 import { completeUpload, getPresignedUrl } from '../services/uploadService';
+import { processVideo } from '../services/videoService';
 
 interface UploadParams {
     fileUri: string;
@@ -117,6 +118,15 @@ export const useVideoUpload = () => {
                     }
 
                     onProgress?.(100);
+
+                    // NOVO: Disparar processamento (thumbnail) de forma não-bloqueante
+                    const uploadedVideoId = resultData?.videoId || resultData?.data?.videoId || resultData?.id;
+                    if (uploadedVideoId) {
+                        processVideo(uploadedVideoId)
+                            .then(() => console.log(`[VideoUpload] Processamento iniciado para ${uploadedVideoId}`))
+                            .catch((err: any) => console.warn('[VideoUpload] Falha ao iniciar processamento do vídeo em background:', err.message));
+                    }
+
                     return resultData;
 
                 } catch (error: any) {

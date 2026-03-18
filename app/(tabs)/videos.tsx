@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, FlatList, RefreshControl, View, TouchableOpacity, Text, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { EmptyState } from '../../components/specific/EmptyState';
@@ -34,6 +35,49 @@ function SkeletonCard() {
         </Animated.View>
     );
 }
+
+const VideoCardWithFallback = ({ item, onPress, onLongPress }: { item: any; onPress: () => void; onLongPress: () => void }) => {
+    const [localThumbnail, setLocalThumbnail] = useState<string | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const generateThumbnail = async () => {
+            if (!item.thumbnailUrl && item.videoUrl) {
+                try {
+                    // Firebase URLs can sometimes be problematic if double-encoded or having weird params
+                    const safeUrl = decodeURIComponent(item.videoUrl);
+                    console.log(`[Thumbnail] Iniciando extração nativa para: ${item.id}`);
+
+                    // Tenta extrair no segundo 1 (1000ms) para evitar frames pretos iniciais
+                    const { uri } = await VideoThumbnails.getThumbnailAsync(safeUrl, {
+                        time: 1000,
+                        quality: 0.7
+                    });
+
+                    if (isMounted) {
+                        console.log(`[Thumbnail] Sucesso local para ${item.id}:`, uri);
+                        setLocalThumbnail(uri);
+                    }
+                } catch (e: any) {
+                    console.warn(`[Thumbnail Fallback] Falha para ${item.id}:`, e?.message || e);
+                }
+            }
+        };
+        generateThumbnail();
+        return () => { isMounted = false; };
+    }, [item.thumbnailUrl, item.videoUrl]);
+
+    return (
+        <VideoCard
+            title={item.title}
+            duration={item.duration || 0}
+            status={item.status || 'PENDING'}
+            thumbnailUrl={item.thumbnailUrl || localThumbnail}
+            onPress={onPress}
+            onLongPress={onLongPress}
+        />
+    );
+};
 
 export default function VideosScreen() {
     const { t } = useTranslation();
@@ -159,11 +203,8 @@ export default function VideosScreen() {
                     data={filteredVideos}
                     keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                     renderItem={({ item }) => (
-                        <VideoCard
-                            title={item.title}
-                            duration={item.duration || 0}
-                            status={item.status || 'PENDING'}
-                            thumbnailUrl={item.thumbnailUrl}
+                        <VideoCardWithFallback
+                            item={item}
                             onPress={() => {
                                 router.push({
                                     pathname: '/(main)/caption-editor',
