@@ -196,6 +196,19 @@ export function VideoPlayer({
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const pan = useRef(new Animated.ValueXY()).current;
 
+    // Decodifica a URL caso tenha sido URL-encoded pelo Expo Router
+    const decodedUri = React.useMemo(() => {
+        try {
+            // Só decodifica se a URL parece estar encoded (contém %3A ou %2F)
+            if (videoUri && (videoUri.includes('%3A') || videoUri.includes('%2F'))) {
+                return decodeURIComponent(videoUri);
+            }
+            return videoUri;
+        } catch {
+            return videoUri;
+        }
+    }, [videoUri]);
+
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
@@ -223,7 +236,7 @@ export function VideoPlayer({
         })
     ).current;
 
-    const player = useVideoPlayer(videoUri, (p) => {
+    const player = useVideoPlayer(decodedUri, (p) => {
         p.loop = false;
     });
 
@@ -285,20 +298,7 @@ export function VideoPlayer({
                 nativeControls={false}
             />
 
-            {/* Play/Pause Overlay */}
-            <TouchableOpacity
-                activeOpacity={1}
-                onPress={handlePlayPause}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 0 }}
-            >
-                {!isPlaying && (
-                    <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
-                        <FontAwesome name="play" size={24} color="white" style={{ marginLeft: 4 }} />
-                    </View>
-                )}
-            </TouchableOpacity>
-
-            {/* CapCut-style Subtitle Overlay */}
+            {/* CapCut-style Subtitle Overlay (draggable) — zIndex 20 */}
             {currentSubtitle && (
                 <View
                     {...panResponder.panHandlers}
@@ -323,9 +323,50 @@ export function VideoPlayer({
                 </View>
             )}
 
-            {/* Progress Bar */}
+            {/* Play/Pause Button — zIndex 30 (acima do panResponder da legenda) */}
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handlePlayPause}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 40, // deixa espaço para a barra de progresso
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 30,
+                    // Só mostra área clicável quando não está tocando (para não bloquear a legenda)
+                    pointerEvents: isPlaying ? 'none' : 'auto',
+                }}
+            >
+                {!isPlaying && (
+                    <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                        <FontAwesome name="play" size={24} color="white" style={{ marginLeft: 4 }} />
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            {/* Botão de pause (toque rápido enquanto toca) — zIndex 30 */}
+            {isPlaying && (
+                <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={handlePlayPause}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 40,
+                        zIndex: 30,
+                        // Área transparente que captura toque para pausar
+                    }}
+                />
+            )}
+
+            {/* Progress Bar — zIndex 40 */}
             {duration > 0 && (
-                <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 8, zIndex: 10 }}>
+                <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 8, zIndex: 40 }}>
                     <Text style={{ color: 'white', fontSize: 11, marginRight: 8, fontFamily: 'Inter' }}>
                         {formatTime(currentTime)}
                     </Text>
