@@ -60,7 +60,8 @@ export const createCheckoutSession = async (
 export const getPlans = async (): Promise<PlanData[]> => {
     try {
         const response = await api.get('/subscriptions/plans');
-        return response.data;
+        // O backend retorna: { success: true, data: [...] }
+        return response.data?.data || response.data;
     } catch (error: any) {
         console.warn('Backend route for plans might fail. Returning fallback plans.', error.message);
         return FALLBACK_PLANS;
