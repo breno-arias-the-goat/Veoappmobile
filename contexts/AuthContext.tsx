@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import api, { setApiToken } from '../lib/api';
+import api, { setApiToken, getApiToken } from '../lib/api';
 import { getMe, loginUser, loginWithGoogle, signupUser, updateProfile } from '../services/authService';
 
 type UserProfile = {
@@ -75,6 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (storedToken) {
                     setApiToken(storedToken);
                     setToken(storedToken);
+                    // Tenta renovar o token silenciosamente (resolve "networking error" após 1h)
+                    try {
+                        const refreshResponse = await api.post('/auth/refresh-token');
+                        const newToken = refreshResponse.data?.data?.tokens?.accessToken;
+                        if (newToken) {
+                            setApiToken(newToken);
+                            setToken(newToken);
+                            await persistToken(newToken);
+                        }
+                    } catch {
+                        // Se refresh falhar, mantém o token atual — será tratado no próximo login
+                    }
                     // Load real user data from backend
                     try {
                         const me = await getMe();

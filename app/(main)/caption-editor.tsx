@@ -8,7 +8,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { VideoPlayer, SubtitleStyle } from '../../components/specific/VideoPlayer';
 import { useSubtitles, Subtitle } from '../../hooks/useSubtitles';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../lib/api';
+import { getApiToken } from '../../lib/api';
 import { StatusBar } from 'expo-status-bar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -172,7 +172,7 @@ export default function CaptionEditorScreen() {
             setProgress(15);
 
             // 3. Obtém o token de autenticação do cache do axios
-            const token = (api.defaults.headers.common?.Authorization as string)?.replace('Bearer ', '');
+            const token = getApiToken();
             const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://veo-backend-fxzr.onrender.com/api';
             const renderUrl = `${baseUrl}/subtitles/video/${videoId}/render`;
 
@@ -201,7 +201,7 @@ export default function CaptionEditorScreen() {
                     const errJson = await fetchResponse.json();
                     errMsg = errJson?.message || errMsg;
                 } catch {
-                    try { errMsg = await fetchResponse.text() || errMsg; } catch {}
+                    try { errMsg = await fetchResponse.text() || errMsg; } catch { }
                 }
                 throw new Error(errMsg);
             }

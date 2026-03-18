@@ -7,6 +7,10 @@ export function setApiToken(token: string | null) {
     cachedToken = token;
 }
 
+export function getApiToken(): string | null {
+    return cachedToken;
+}
+
 const getBaseUrl = () => {
     return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 };
@@ -28,6 +32,18 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Interceptor de resposta: limpa o token em caso de 401 (expirado/inválido)
+// O AuthContext detectará token=null e redirecionará para o login
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            setApiToken(null);
+        }
         return Promise.reject(error);
     }
 );
