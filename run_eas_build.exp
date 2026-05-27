@@ -1,0 +1,93 @@
+#!/usr/bin/expect -f
+
+set timeout 900
+set apple_id "breno440644@icloud.com"
+set apple_pass "08947610Br@"
+
+# Inicia o build EAS
+spawn npx eas-cli build --platform ios --profile preview
+
+expect_after {
+    timeout {
+        puts "\n⏳ Timeout — processo demorou demais. Verifique: https://expo.dev/accounts/brenododrop/projects"
+        exit 1
+    }
+    eof {
+        puts "\n✅ Processo finalizado!"
+        exit 0
+    }
+}
+
+# Loop principal para responder todos os prompts
+while 1 {
+    expect {
+        -re "Do you want to log in to your Apple account.*\[YyNn\]" {
+            sleep 0.3
+            send "Y\r"
+        }
+        -re "Apple ID:.*" {
+            sleep 0.3
+            send "$apple_id\r"
+        }
+        -re "Password:.*" {
+            sleep 0.3
+            send "$apple_pass\r"
+        }
+        -re "Enter the.*code.*:" {
+            puts "\n\n⚠️  CÓDIGO 2FA NECESSÁRIO!\n"
+            puts "Digite o código de 6 dígitos que chegou no seu iPhone e pressione Enter:\n"
+            expect_user -re "(.*)\n" {
+                send "$expect_out(1,string)\r"
+            }
+        }
+        -re "Would you like to try again.*" {
+            puts "\n❌ Login falhou — verificando credenciais...\n"
+            send "no\r"
+            exit 1
+        }
+        -re "Generate a new.*Certificate.*" {
+            sleep 0.3
+            send "\r"
+        }
+        -re "Generate a new.*Profile.*" {
+            sleep 0.3
+            send "\r"
+        }
+        -re "Select.*team.*" {
+            sleep 0.3
+            send "\r"
+        }
+        -re "Which distribution certificate.*" {
+            sleep 0.3
+            send "\r"
+        }
+        -re "Which provisioning profile.*" {
+            sleep 0.3
+            send "\r"
+        }
+        -re "\[Y/n\]" {
+            sleep 0.3
+            send "Y\r"
+        }
+        -re "\[y/N\]" {
+            sleep 0.3
+            send "y\r"
+        }
+        -re "Build created" {
+            puts "\n\n✅ BUILD INICIADO NOS SERVIDORES EXPO!\n"
+        }
+        -re "(https://expo\\.dev/[^\r\n]+)" {
+            puts "\n🔗 LINK: $expect_out(1,string)\n"
+        }
+        -re "Successfully" {
+            puts "\n✅ Sucesso!\n"
+        }
+        -re "Error:" {
+            puts "\n❌ Erro detectado no output\n"
+        }
+        eof {
+            puts "\n✅ Build submetido! Verifique: https://expo.dev/accounts/brenododrop/projects\n"
+            exit 0
+        }
+    }
+}
