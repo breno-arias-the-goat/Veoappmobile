@@ -1,13 +1,11 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
-import * as Crypto from 'expo-crypto';
-import { Link, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -31,17 +29,11 @@ export default function SignupScreen() {
         resolver: yupResolver(schema)
     });
 
-    const { signUp, signInWithGoogle, signInWithApple } = useAuth();
+    const { signUp, signInWithGoogle } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [appleLoading, setAppleLoading] = useState(false);
-    const [appleAvailable, setAppleAvailable] = useState(false);
-
-    useEffect(() => {
-        AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
-    }, []);
 
     // ── Google OAuth ──────────────────────────────────────────────────────────
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -68,32 +60,6 @@ export default function SignupScreen() {
             showToast(error.message || 'Falha no cadastro com Google', 'error');
         } finally {
             setGoogleLoading(false);
-        }
-    };
-
-    // ── Apple Sign-In ─────────────────────────────────────────────────────────
-    const handleAppleSignIn = async () => {
-        try {
-            setAppleLoading(true);
-            const nonce = Crypto.randomUUID();
-            const credential = await AppleAuthentication.signInAsync({
-                requestedScopes: [
-                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                ],
-                nonce,
-            });
-            if (credential.identityToken) {
-                await signInWithApple(credential.identityToken, nonce);
-                showToast('Bem-vindo ao Veo! 🎉', 'success');
-                router.replace('/(onboarding)/1');
-            }
-        } catch (error: any) {
-            if (error.code !== 'ERR_REQUEST_CANCELED') {
-                showToast(error.message || 'Falha no cadastro com Apple', 'error');
-            }
-        } finally {
-            setAppleLoading(false);
         }
     };
 
@@ -126,28 +92,18 @@ export default function SignupScreen() {
                 <Text className="text-base font-inter-medium text-text-secondary text-center px-4">{t('auth.signup_subtitle')}</Text>
             </View>
 
-            {/* Social Logins */}
+            {/* Google Sign-Up */}
             <View className="mb-6">
                 <TouchableOpacity
                     className="h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center mb-3"
                     onPress={() => promptAsync()}
                     disabled={googleLoading || !request}
                 >
-                    <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
-                    <Text className="text-white ml-3 font-inter-semibold">
+                    <Text className="text-2xl mr-2">🌐</Text>
+                    <Text className="text-white font-inter-semibold text-base">
                         {googleLoading ? 'Entrando...' : 'Continuar com Google'}
                     </Text>
                 </TouchableOpacity>
-
-                {appleAvailable && (
-                    <AppleAuthentication.AppleAuthenticationButton
-                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                        cornerRadius={12}
-                        style={{ height: 56 }}
-                        onPress={handleAppleSignIn}
-                    />
-                )}
             </View>
 
             {/* Divider */}
@@ -169,7 +125,7 @@ export default function SignupScreen() {
                             value={value}
                         />
                         {errors.name && (
-                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4 }}>
                                 {errors.name.message}
                             </Text>
                         )}
@@ -191,7 +147,7 @@ export default function SignupScreen() {
                             autoCapitalize="none"
                         />
                         {errors.email && (
-                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4 }}>
                                 {errors.email.message}
                             </Text>
                         )}
@@ -212,7 +168,7 @@ export default function SignupScreen() {
                             value={value}
                         />
                         {errors.password && (
-                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4 }}>
                                 {errors.password.message}
                             </Text>
                         )}

@@ -1,13 +1,11 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
 import { Link } from 'expo-router';
-import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -30,16 +28,10 @@ export default function LoginScreen() {
         resolver: yupResolver(schema)
     });
 
-    const { signIn, signInWithGoogle, signInWithApple } = useAuth();
+    const { signIn, signInWithGoogle } = useAuth();
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [appleLoading, setAppleLoading] = useState(false);
-    const [appleAvailable, setAppleAvailable] = useState(false);
-
-    useEffect(() => {
-        AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
-    }, []);
 
     // ── Google OAuth ──────────────────────────────────────────────────────────
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -65,31 +57,6 @@ export default function LoginScreen() {
             showToast(error.message || 'Falha no login com Google', 'error');
         } finally {
             setGoogleLoading(false);
-        }
-    };
-
-    // ── Apple Sign-In ─────────────────────────────────────────────────────────
-    const handleAppleSignIn = async () => {
-        try {
-            setAppleLoading(true);
-            const nonce = Crypto.randomUUID();
-            const credential = await AppleAuthentication.signInAsync({
-                requestedScopes: [
-                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                ],
-                nonce,
-            });
-            if (credential.identityToken) {
-                await signInWithApple(credential.identityToken, nonce);
-                showToast(t('auth.login_success'), 'success');
-            }
-        } catch (error: any) {
-            if (error.code !== 'ERR_REQUEST_CANCELED') {
-                showToast(error.message || 'Falha no login com Apple', 'error');
-            }
-        } finally {
-            setAppleLoading(false);
         }
     };
 
@@ -121,28 +88,18 @@ export default function LoginScreen() {
                 <Text className="text-base font-inter-medium text-text-secondary text-center px-4">{t('auth.login_subtitle')}</Text>
             </View>
 
-            {/* Social Logins */}
+            {/* Google Sign-In */}
             <View className="mb-6">
                 <TouchableOpacity
                     className="h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center mb-3"
                     onPress={() => promptAsync()}
                     disabled={googleLoading || !request}
                 >
-                    <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
-                    <Text className="text-white ml-3 font-inter-semibold">
+                    <Text className="text-2xl mr-2">🌐</Text>
+                    <Text className="text-white font-inter-semibold text-base">
                         {googleLoading ? 'Entrando...' : 'Continuar com Google'}
                     </Text>
                 </TouchableOpacity>
-
-                {appleAvailable && (
-                    <AppleAuthentication.AppleAuthenticationButton
-                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                        cornerRadius={12}
-                        style={{ height: 56 }}
-                        onPress={handleAppleSignIn}
-                    />
-                )}
             </View>
 
             {/* Divider */}
@@ -166,7 +123,7 @@ export default function LoginScreen() {
                             autoCapitalize="none"
                         />
                         {errors.email && (
-                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4 }}>
                                 {errors.email.message}
                             </Text>
                         )}
@@ -187,7 +144,7 @@ export default function LoginScreen() {
                             value={value}
                         />
                         {errors.password && (
-                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                            <Text style={{ color: '#FF3366', fontSize: 12, marginTop: 4 }}>
                                 {errors.password.message}
                             </Text>
                         )}
