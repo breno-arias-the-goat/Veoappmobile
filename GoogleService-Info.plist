@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>133042398286-nltn0i7vgbuhp4l58suflumjsfvqaubn.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.133042398286-nltn0i7vgbuhp4l58suflumjsfvqaubn</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCJii5rYUqyKt2kxN82WItlwURc6mK7vTw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>133042398286</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.veoteleprompter.app</string>
+	<key>PROJECT_ID</key>
+	<string>veotextos</string>
+	<key>STORAGE_BUCKET</key>
+	<string>veotextos.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:133042398286:ios:f3cfa5eacf8c94129d4f1f</string>
+</dict>
+</plist>
