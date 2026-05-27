@@ -35,6 +35,11 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [appleLoading, setAppleLoading] = useState(false);
+    const [appleAvailable, setAppleAvailable] = useState(false);
+
+    useEffect(() => {
+        AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+    }, []);
 
     // ── Google OAuth ──────────────────────────────────────────────────────────
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -129,7 +134,7 @@ export default function LoginScreen() {
                     </Text>
                 </TouchableOpacity>
 
-                {Platform.OS === 'ios' && (
+                {appleAvailable && (
                     <AppleAuthentication.AppleAuthenticationButton
                         buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                         buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}

@@ -23,11 +23,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.veoteleprompter.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "entitlements": {
-        "com.apple.developer.applesignin": ["Default"]
-      },
       "infoPlist": {
         "NSCameraUsageDescription": "O Veo precisa acessar sua câmera para gravar vídeos com o teleprompter.",
         "NSMicrophoneUsageDescription": "O Veo precisa do seu microfone para gravar e transcrever o áudio do seu vídeo.",
@@ -96,8 +93,7 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
