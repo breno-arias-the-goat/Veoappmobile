@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -217,24 +217,20 @@ export default function CaptionEditorScreen() {
 
             setProgress(60);
 
-            // 5. Converte o blob para base64 e salva com FileSystem
-            //    (expo-file-system não suporta escrita direta de streams)
-            const blob = await fetchResponse.blob();
-
+            // 5. Converte ArrayBuffer → base64 e salva com FileSystem
+            //    Hermes (React Native) suporta ArrayBuffer e btoa nativamente
+            const arrayBuffer = await fetchResponse.arrayBuffer();
             setProgress(75);
 
-            const base64Data = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    // Remove o prefixo "data:video/mp4;base64," e retorna só o base64
-                    const commaIdx = result.indexOf(',');
-                    resolve(commaIdx >= 0 ? result.substring(commaIdx + 1) : result);
-                };
-                reader.onerror = () => reject(new Error('Falha ao converter vídeo para base64'));
-                reader.readAsDataURL(blob);
-            });
-
+            // Converte ArrayBuffer para string base64 em chunks (evita crash em vídeos grandes)
+            const bytes = new Uint8Array(arrayBuffer);
+            const chunkSize = 8192;
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+                const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength));
+                binary += String.fromCharCode(...Array.from(chunk));
+            }
+            const base64Data = btoa(binary);
             setProgress(85);
 
             const fileName = `veo_legenda_${Date.now()}.mp4`;
@@ -243,12 +239,10 @@ export default function CaptionEditorScreen() {
             await FileSystem.writeAsStringAsync(fileUri, base64Data, {
                 encoding: FileSystem.EncodingType.Base64,
             });
-
-            setProgress(95);
+            setProgress(92);
 
             // 6. Salva na galeria do dispositivo
             await MediaLibrary.saveToLibraryAsync(fileUri);
-
             setProgress(100);
 
             // 7. Remove arquivo temporário
