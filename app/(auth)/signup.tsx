@@ -1,20 +1,28 @@
 import { yupResolver } from '@hookform/resolvers/yup';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Google from 'expo-auth-session/providers/google';
+import * as Crypto from 'expo-crypto';
 import { Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = '133042398286-nltn0i7vgbuhp4l58suflumjsfvqaubn.apps.googleusercontent.com';
+
 export default function SignupScreen() {
     const { t } = useTranslation();
 
     const schema = yup.object({
-        name: yup.string().required(t('auth.email_required')), // Reusing generic required text or name required
+        name: yup.string().required('Nome é obrigatório'),
         email: yup.string().email(t('auth.email_invalid')).required(t('auth.email_required')),
         password: yup.string().min(6, t('auth.password_min')).required(t('auth.password_required')),
     }).required();
@@ -22,11 +30,69 @@ export default function SignupScreen() {
     const { control, handleSubmit, formState: { errors } } = useForm({
         resolver: yupResolver(schema)
     });
-    const { signUp } = useAuth();
-    const { showToast } = useToast();
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
+    const { signUp, signInWithGoogle, signInWithApple } = useAuth();
+    const { showToast } = useToast();
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const [appleLoading, setAppleLoading] = useState(false);
+
+    // ── Google OAuth ──────────────────────────────────────────────────────────
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        iosClientId: GOOGLE_WEB_CLIENT_ID,
+    });
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { authentication } = response;
+            if (authentication?.accessToken) {
+                handleGoogleToken(authentication.accessToken);
+            }
+        }
+    }, [response]);
+
+    const handleGoogleToken = async (token: string) => {
+        try {
+            setGoogleLoading(true);
+            await signInWithGoogle(token);
+            showToast('Bem-vindo ao Veo! 🎉', 'success');
+            router.replace('/(onboarding)/1');
+        } catch (error: any) {
+            showToast(error.message || 'Falha no cadastro com Google', 'error');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
+    // ── Apple Sign-In ─────────────────────────────────────────────────────────
+    const handleAppleSignIn = async () => {
+        try {
+            setAppleLoading(true);
+            const nonce = Crypto.randomUUID();
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+                nonce,
+            });
+            if (credential.identityToken) {
+                await signInWithApple(credential.identityToken, nonce);
+                showToast('Bem-vindo ao Veo! 🎉', 'success');
+                router.replace('/(onboarding)/1');
+            }
+        } catch (error: any) {
+            if (error.code !== 'ERR_REQUEST_CANCELED') {
+                showToast(error.message || 'Falha no cadastro com Apple', 'error');
+            }
+        } finally {
+            setAppleLoading(false);
+        }
+    };
+
+    // ── Email/Password ────────────────────────────────────────────────────────
     const onSubmit = async (data: any) => {
         try {
             setLoading(true);
@@ -43,16 +109,47 @@ export default function SignupScreen() {
 
     return (
         <View className="flex-1 justify-center p-8 bg-background">
-            <View className="items-center mb-10">
+            <View className="items-center mb-8">
                 <Image
                     source={require('../../assets/images/veo-logo.png')}
                     style={{ width: 240, height: 80 }}
                     resizeMode="contain"
                 />
             </View>
-            <View className="mb-12">
+            <View className="mb-6">
                 <Text className="text-4xl font-inter-bold text-white mb-3 text-center tracking-tight">{t('auth.signup_title')}</Text>
                 <Text className="text-base font-inter-medium text-text-secondary text-center px-4">{t('auth.signup_subtitle')}</Text>
+            </View>
+
+            {/* Social Logins */}
+            <View className="mb-6">
+                <TouchableOpacity
+                    className="h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center mb-3"
+                    onPress={() => promptAsync()}
+                    disabled={googleLoading || !request}
+                >
+                    <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
+                    <Text className="text-white ml-3 font-inter-semibold">
+                        {googleLoading ? 'Entrando...' : 'Continuar com Google'}
+                    </Text>
+                </TouchableOpacity>
+
+                {Platform.OS === 'ios' && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                        cornerRadius={12}
+                        style={{ height: 56 }}
+                        onPress={handleAppleSignIn}
+                    />
+                )}
+            </View>
+
+            {/* Divider */}
+            <View className="flex-row items-center mb-4">
+                <View className="flex-1 h-[1px] bg-border/30" />
+                <Text className="mx-4 font-inter-medium text-text-secondary text-sm">ou com email</Text>
+                <View className="flex-1 h-[1px] bg-border/30" />
             </View>
 
             <Controller
@@ -101,7 +198,7 @@ export default function SignupScreen() {
                 control={control}
                 name="password"
                 render={({ field: { onChange, value } }) => (
-                    <View className="mb-8">
+                    <View className="mb-6">
                         <Input
                             label={t('auth.password_label')}
                             placeholder={t('auth.password_signup_placeholder')}
@@ -125,38 +222,11 @@ export default function SignupScreen() {
                 disabled={loading}
             />
 
-            <View className="mt-8 flex-row justify-center">
+            <View className="mt-6 flex-row justify-center">
                 <Text className="text-text-secondary">{t('auth.has_account')}</Text>
                 <Link href="/(auth)/login" asChild>
                     <Text className="text-primary font-bold ml-1">{t('auth.login_link')}</Text>
                 </Link>
-            </View>
-
-            {/* Social Logins */}
-            <View className="mt-8 px-4">
-                <View className="flex-row items-center mb-6">
-                    <View className="flex-1 h-[1px] bg-border/30" />
-                    <Text className="mx-4 font-inter-medium text-text-secondary text-sm">Ou continue com</Text>
-                    <View className="flex-1 h-[1px] bg-border/30" />
-                </View>
-
-                <View className="flex-row justify-between mb-8 space-x-4">
-                    <TouchableOpacity
-                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
-                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Google nativo funcionará nas builds finais fora do Expo Go.")}
-                    >
-                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg' }} style={{ width: 22, height: 22 }} />
-                        <Text className="text-white ml-3 font-inter-semibold">Google</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className="flex-1 h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center"
-                        onPress={() => Alert.alert("Desenvolvimento", "O login OAuth Apple nativo funcionará nas builds finais para iOS/Mac.")}
-                    >
-                        <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg' }} style={{ width: 22, height: 22, tintColor: 'white' }} />
-                        <Text className="text-white ml-3 font-inter-semibold">Apple</Text>
-                    </TouchableOpacity>
-                </View>
             </View>
         </View>
     );

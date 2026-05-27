@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import api, { setApiToken, getApiToken } from '../lib/api';
-import { getMe, loginUser, loginWithGoogle, signupUser, updateProfile } from '../services/authService';
+import { getMe, loginUser, loginWithGoogle, loginWithApple, signupUser, updateProfile } from '../services/authService';
 
 type UserProfile = {
     id: string;
@@ -30,6 +30,7 @@ type AuthContextType = {
     isLoading: boolean;
     signIn: (credentials: any) => Promise<void>;
     signInWithGoogle: (googleAccessToken: string) => Promise<void>;
+    signInWithApple: (identityToken: string, nonce: string) => Promise<void>;
     signUp: (userData: any) => Promise<void>;
     signOut: () => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -129,6 +130,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const signInWithApple = async (identityToken: string, nonce: string) => {
+        const responseData = await loginWithApple(identityToken, nonce);
+        const accessToken = responseData?.data?.tokens?.accessToken;
+        const userData = responseData?.data?.user;
+        if (accessToken) {
+            setApiToken(accessToken);
+            setToken(accessToken);
+            if (userData) setUser(userData);
+            await persistToken(accessToken);
+        }
+    };
+
     const signIn = async (credentials: any) => {
         const responseData = await loginUser(credentials);
         const accessToken = responseData?.data?.tokens?.accessToken;
@@ -215,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading,
             signIn,
             signInWithGoogle,
+            signInWithApple,
             signUp,
             signOut,
             refreshUser,

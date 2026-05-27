@@ -5,6 +5,7 @@ import {
     createUserWithEmailAndPassword,
     updateProfile as updateFirebaseAuthProfile,
     GoogleAuthProvider,
+    OAuthProvider,
     signInWithCredential,
 } from 'firebase/auth';
 
@@ -161,4 +162,47 @@ export const getMe = async () => {
 export const updateProfile = async (data: { firstName?: string; lastName?: string; profilePictureUrl?: string | null }) => {
     const response = await api.patch('/auth/me', data);
     return response.data?.data ?? null;
+};
+
+/**
+ * Login com Apple usando expo-apple-authentication.
+ * Recebe o identityToken da Apple e faz login no Firebase via OAuthProvider.
+ */
+export const loginWithApple = async (identityToken: string, nonce: string) => {
+    // 1. Cria credencial Firebase com o token da Apple
+    const provider = new OAuthProvider('apple.com');
+    const credential = provider.credential({ idToken: identityToken, rawNonce: nonce });
+
+    // 2. Faz login no Firebase
+    let userCredential;
+    try {
+        userCredential = await Promise.race([
+            signInWithCredential(auth, credential),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_firebase')), 15000)
+            )
+        ]);
+    } catch (error: any) {
+        if (error.message === 'timeout_firebase') {
+            throw new Error('Tempo de conexão esgotado. Verifique sua internet.');
+        }
+        throw new Error('Falha ao autenticar com Apple. Tente novamente.');
+    }
+
+    // 3. Obtém Firebase ID Token e envia para o backend
+    const idToken = await userCredential.user.getIdToken();
+    try {
+        const response = await Promise.race([
+            api.post('/auth/login', { idToken }),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout_api')), 15000)
+            )
+        ]);
+        return response.data;
+    } catch (error: any) {
+        if (error.message === 'timeout_api') {
+            throw new Error('Servidor demorou demais para responder. Tente novamente.');
+        }
+        throw new Error(error.response?.data?.message || 'Falha ao conectar com o servidor.');
+    }
 };
