@@ -1,5 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Extraindo das credenciais fornecidas no admin SDK.
 const firebaseConfig = {
@@ -19,7 +21,9 @@ if (getApps().length === 0) {
     app = getApp();
 }
 
-// Inicializando o Auth Engine. O Expo lida com a persistência assíncrona default.
-const auth = getAuth(app);
+// Inicializando o Auth Engine com persistência AsyncStorage assíncrona nativa
+const auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+});
 
 export { auth, app };

@@ -5,7 +5,9 @@ import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View, Platform } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import * as yup from 'yup';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
@@ -29,11 +31,55 @@ export default function SignupScreen() {
         resolver: yupResolver(schema)
     });
 
-    const { signUp, signInWithGoogle } = useAuth();
+    const { signUp, signInWithGoogle, signInWithApple } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [appleLoading, setAppleLoading] = useState(false);
+    const [isAppleAvailable, setIsAppleAvailable] = useState(Platform.OS === 'ios');
+
+    useEffect(() => {
+        AppleAuthentication.isAvailableAsync().then((available) => {
+            setIsAppleAvailable(available);
+        });
+    }, []);
+
+    // ── Apple OAuth ───────────────────────────────────────────────────────────
+    const handleAppleLogin = async () => {
+        if (appleLoading) return;
+        try {
+            setAppleLoading(true);
+            const rawNonce = Math.random().toString(36).substring(2, 10);
+            const nonce = await Crypto.digestStringAsync(
+                Crypto.CryptoDigestAlgorithm.SHA256,
+                rawNonce
+            );
+
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+                nonce,
+            });
+
+            if (credential.identityToken) {
+                await signInWithApple(credential.identityToken, rawNonce);
+                showToast('Bem-vindo ao Veo! 🎉', 'success');
+                router.replace('/(onboarding)/1');
+            } else {
+                throw new Error('Não foi possível obter o token de identidade da Apple.');
+            }
+        } catch (error: any) {
+            if (error.code === 'ERR_REQUEST_CANCELED') {
+                return;
+            }
+            showToast(error.message || 'Falha no cadastro com Apple', 'error');
+        } finally {
+            setAppleLoading(false);
+        }
+    };
 
     // ── Google OAuth ──────────────────────────────────────────────────────────
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -104,6 +150,16 @@ export default function SignupScreen() {
                         {googleLoading ? 'Entrando...' : 'Continuar com Google'}
                     </Text>
                 </TouchableOpacity>
+
+                {isAppleAvailable && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                        cornerRadius={12}
+                        style={{ width: '100%', height: 56, marginBottom: 12 }}
+                        onPress={handleAppleLogin}
+                    />
+                )}
             </View>
 
             {/* Divider */}

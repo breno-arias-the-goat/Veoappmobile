@@ -5,8 +5,10 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View, Platform } from 'react-native';
 import * as yup from 'yup';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { Button } from '../../components/base/Button';
 import { Input } from '../../components/base/Input';
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,10 +30,53 @@ export default function LoginScreen() {
         resolver: yupResolver(schema)
     });
 
-    const { signIn, signInWithGoogle } = useAuth();
+    const { signIn, signInWithGoogle, signInWithApple } = useAuth();
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [appleLoading, setAppleLoading] = useState(false);
+    const [isAppleAvailable, setIsAppleAvailable] = useState(Platform.OS === 'ios');
+
+    useEffect(() => {
+        AppleAuthentication.isAvailableAsync().then((available) => {
+            setIsAppleAvailable(available);
+        });
+    }, []);
+
+    // ── Apple OAuth ───────────────────────────────────────────────────────────
+    const handleAppleLogin = async () => {
+        if (appleLoading) return;
+        try {
+            setAppleLoading(true);
+            const rawNonce = Math.random().toString(36).substring(2, 10);
+            const nonce = await Crypto.digestStringAsync(
+                Crypto.CryptoDigestAlgorithm.SHA256,
+                rawNonce
+            );
+
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+                nonce,
+            });
+
+            if (credential.identityToken) {
+                await signInWithApple(credential.identityToken, rawNonce);
+                showToast(t('auth.login_success'), 'success');
+            } else {
+                throw new Error('Não foi possível obter o token de identidade da Apple.');
+            }
+        } catch (error: any) {
+            if (error.code === 'ERR_REQUEST_CANCELED') {
+                return;
+            }
+            showToast(error.message || 'Falha no login com Apple', 'error');
+        } finally {
+            setAppleLoading(false);
+        }
+    };
 
     // ── Google OAuth ──────────────────────────────────────────────────────────
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -88,7 +133,7 @@ export default function LoginScreen() {
                 <Text className="text-base font-inter-medium text-text-secondary text-center px-4">{t('auth.login_subtitle')}</Text>
             </View>
 
-            {/* Google Sign-In */}
+            {/* Social Sign-In Options */}
             <View className="mb-6">
                 <TouchableOpacity
                     className="h-14 bg-card rounded-xl border border-border/50 flex-row items-center justify-center mb-3"
@@ -100,6 +145,16 @@ export default function LoginScreen() {
                         {googleLoading ? 'Entrando...' : 'Continuar com Google'}
                     </Text>
                 </TouchableOpacity>
+
+                {isAppleAvailable && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                        cornerRadius={12}
+                        style={{ width: '100%', height: 56, marginBottom: 12 }}
+                        onPress={handleAppleLogin}
+                    />
+                )}
             </View>
 
             {/* Divider */}

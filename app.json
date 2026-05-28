@@ -25,6 +25,9 @@
       "bundleIdentifier": "com.veoteleprompter.app",
       "buildNumber": "3",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "O Veo precisa acessar sua câmera para gravar vídeos com o teleprompter.",
         "NSMicrophoneUsageDescription": "O Veo precisa do seu microfone para gravar e transcrever o áudio do seu vídeo.",
@@ -64,6 +67,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-dev-client",
       "expo-router",
       [
